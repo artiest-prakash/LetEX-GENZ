@@ -1,0 +1,5 @@
+{
+  "name": "LetEX - Virtual Simulation Lab",
+  "description": "An AI-powered virtual laboratory where you can generate and interact with simulations, physics experiments, and mini-games simply by describing them.",
+  "requestFramePermissions": []
+}
