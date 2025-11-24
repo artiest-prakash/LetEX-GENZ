@@ -65,7 +65,7 @@ const App: React.FC = () => {
           <span className="text-2xl font-bold tracking-tight text-slate-800 font-brand brand-font">LetEX</span>
         </div>
         
-        {/* API Status Indicator (Small visual feedback if key is present) */}
+        {/* System Status */}
         <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-white/50 border border-slate-100 text-xs text-slate-400">
           <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
           System Online

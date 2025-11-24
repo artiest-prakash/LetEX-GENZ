@@ -4,33 +4,116 @@ import { GoogleGenAI } from "@google/genai";
 // ------------------------------------------------------------------
 // CONFIGURATION
 // ------------------------------------------------------------------
-// Paste your Google Gemini API Key between the quotes below.
-// You can get one at: https://aistudio.google.com/app/apikey
-const MANUALLY_ENTERED_KEY = ""; 
 
-const getApiKey = () => {
-  // 1. Check manual entry first (User Preference)
-  if (MANUALLY_ENTERED_KEY) return MANUALLY_ENTERED_KEY;
+// Initialize the client strictly using process.env.API_KEY as per guidelines.
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-  // 2. Check Vercel/Netlify/Node environment variables
-  // @ts-ignore
-  if (typeof process !== "undefined" && process.env && process.env.API_KEY) {
-    // @ts-ignore
-    return process.env.API_KEY;
-  }
-  
-  // 3. Check Vite/Modern Bundler variables
-  // @ts-ignore
-  if (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_KEY) {
-    // @ts-ignore
-    return import.meta.env.VITE_API_KEY;
-  }
+// FALLBACK DATA (Used if no API key is provided)
+const DEMO_SIMULATION = {
+  title: "Solar System Orbit (Demo Mode)",
+  description: "A gravitational simulation of planets orbiting a star. This is running in Demo Mode because no API key was detected.",
+  instructions: "Use the sliders to adjust the gravitational constant (G) and the simulation speed. Click 'Reset' to restore initial positions. This demonstrates the 16:9 layout and control system.",
+  controls: [
+    { "id": "g_force", "type": "slider", "label": "Gravity (G)", "min": 1, "max": 20, "defaultValue": 5, "step": 0.5 },
+    { "id": "speed", "type": "slider", "label": "Sim Speed", "min": 0.1, "max": 3, "defaultValue": 1, "step": 0.1 },
+    { "id": "trails", "type": "toggle", "label": "Show Trails", "defaultValue": true },
+    { "id": "reset", "type": "button", "label": "Reset System" }
+  ],
+  code: `
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { margin: 0; overflow: hidden; background: #0f172a; font-family: sans-serif; }
+    canvas { display: block; width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <canvas id="simCanvas"></canvas>
+  <script>
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    let params = { g_force: 5, speed: 1, trails: true };
+    
+    // Message Listener for React Controls
+    window.addEventListener('message', (e) => {
+      const { id, value } = e.data;
+      if (params.hasOwnProperty(id)) params[id] = value;
+      if (id === 'reset') init();
+    });
 
-  return "";
+    let planets = [];
+    
+    function init() {
+      planets = [
+        { x: 0, y: 0, vx: 0, vy: 0, mass: 1000, color: '#fbbf24', fixed: true }, // Sun
+        { x: 200, y: 0, vx: 0, vy: 2, mass: 20, color: '#3b82f6' }, // Earth
+        { x: 350, y: 0, vx: 0, vy: 1.5, mass: 40, color: '#ef4444' }, // Mars
+        { x: 120, y: 0, vx: 0, vy: 3.5, mass: 5, color: '#a8a29e' }  // Mercury
+      ];
+    }
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+    init();
+
+    function update() {
+      // Clear with trail effect
+      ctx.fillStyle = params.trails ? 'rgba(15, 23, 42, 0.15)' : 'rgba(15, 23, 42, 1)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      const cx = canvas.width / 2;
+      const cy = canvas.height / 2;
+
+      // Physics
+      for (let i = 0; i < planets.length; i++) {
+        let p1 = planets[i];
+        if (p1.fixed) continue;
+
+        for (let j = 0; j < planets.length; j++) {
+          if (i === j) continue;
+          let p2 = planets[j];
+          
+          let dx = p2.x - p1.x;
+          let dy = p2.y - p1.y;
+          let dist = Math.sqrt(dx*dx + dy*dy);
+          if (dist < 5) dist = 5;
+
+          let f = (params.g_force * p1.mass * p2.mass) / (dist * dist);
+          let fx = f * (dx / dist);
+          let fy = f * (dy / dist);
+
+          p1.vx += (fx / p1.mass) * params.speed;
+          p1.vy += (fy / p1.mass) * params.speed;
+        }
+
+        p1.x += p1.vx * params.speed;
+        p1.y += p1.vy * params.speed;
+      }
+
+      // Draw
+      for (let p of planets) {
+        ctx.beginPath();
+        ctx.arc(cx + p.x, cy + p.y, Math.sqrt(p.mass), 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = p.color;
+      }
+      
+      requestAnimationFrame(update);
+    }
+    update();
+  </script>
+</body>
+</html>
+  `
 };
-
-const apiKey = getApiKey();
-const ai = new GoogleGenAI({ apiKey });
 
 const SYSTEM_INSTRUCTION = `
 You are LetEX, a world-class Simulation Architect. You build physically accurate, aesthetically minimal, web-based simulations.
@@ -47,7 +130,7 @@ Generate a self-contained HTML5 Canvas simulation AND a definition of external c
    - **Responsive**: The canvas should resize to fit the window or container.
 
 2. **Interactivity Protocol (External Controls)**:
-   - The user will NOT click inside the canvas to change parameters (like gravity).
+   - The user will NOT click inside the canvas to change parameters.
    - The user will use EXTERNAL sliders/buttons provided in the 'controls' JSON field.
    - **YOUR HTML CODE MUST LISTEN FOR MESSAGES**:
      Include this exact logic in your <script>:
@@ -59,55 +142,33 @@ Generate a self-contained HTML5 Canvas simulation AND a definition of external c
 
      window.addEventListener('message', (event) => {
        const { id, value } = event.data;
-       // Update your simulation variables based on id
        if (simulationParams.hasOwnProperty(id)) {
           simulationParams[id] = value;
-          // Trigger updates or resets if necessary
-          if (id === 'reset') {
-             resetSimulation(); 
-          }
+          if (id === 'reset') { /* reset logic */ }
        }
      });
      \`\`\`
 
-3. **Physics & Accuracy**:
-   - Use real physics formulas (Verlet integration, Euler, or RK4).
-   - Ensure specific experiments (e.g., "Double Pendulum", "Projectile Motion") use correct mathematical models.
-   - Smooth animations using requestAnimationFrame.
-
-4. **Output Format**:
+3. **Output Format**:
    - You MUST return a single, valid JSON object.
-   - DO NOT wrap the JSON in markdown code blocks (like \`\`\`json). Just return the raw JSON string.
+   - DO NOT wrap the JSON in markdown code blocks. Just return the raw JSON string.
    - Structure:
      {
        "title": "String",
        "description": "String",
-       "instructions": "String (Brief usage guide)",
+       "instructions": "String",
        "code": "String (The FULL HTML5 source code)",
-       "controls": [
-         { 
-           "id": "String", 
-           "type": "slider" | "button" | "toggle", 
-           "label": "String", 
-           "min": Number, 
-           "max": Number, 
-           "defaultValue": Number, 
-           "step": Number 
-         }
-       ]
+       "controls": [ { "id": "String", "type": "slider" | "button" | "toggle", "label": "String", "min": Number, "max": Number, "defaultValue": Number, "step": Number } ]
      }
-
-### EXAMPLE CONTROL JSON
-[
-  { "id": "gravity", "type": "slider", "label": "Gravity (m/s²)", "min": 0, "max": 20, "defaultValue": 9.8, "step": 0.1 },
-  { "id": "speed", "type": "slider", "label": "Time Scale", "min": 0, "max": 5, "defaultValue": 1, "step": 0.1 },
-  { "id": "reset", "type": "button", "label": "Reset System" }
-]
 `;
 
 export const generateSimulationCode = async (prompt: string): Promise<any> => {
-  if (!apiKey) {
-    throw new Error("API Key is missing. Please set API_KEY in your environment variables or services/geminiService.ts");
+  // Check for API key availability. If not present, fallback to demo mode.
+  if (!process.env.API_KEY) {
+    console.warn("No API Key found. Returning DEMO simulation.");
+    // Simulate network delay for realism
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    return DEMO_SIMULATION;
   }
 
   try {
@@ -125,7 +186,6 @@ export const generateSimulationCode = async (prompt: string): Promise<any> => {
     const text = response.text;
     if (!text) throw new Error("No response from AI");
     
-    // Clean up potential markdown if the model ignores the instruction (safety net)
     const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
     
     let data;
@@ -136,7 +196,6 @@ export const generateSimulationCode = async (prompt: string): Promise<any> => {
         throw new Error("Received malformed data from AI. Please try again.");
     }
     
-    // Basic validation
     if (!data.code || !data.controls) {
         throw new Error("Incomplete simulation data generated.");
     }
@@ -145,6 +204,6 @@ export const generateSimulationCode = async (prompt: string): Promise<any> => {
 
   } catch (error) {
     console.error("Error generating simulation:", error);
-    throw new Error("Failed to generate simulation. The server might be busy or the request timed out. Please check your API Key.");
+    throw new Error("Failed to generate simulation. Please check your API Key.");
   }
 };
