@@ -1,19 +1,32 @@
 
 import { GoogleGenAI } from "@google/genai";
-import { AIModelId } from "../types";
 
-// Safe API Key retrieval to prevent crashing if process is undefined (common in pure browser builds)
+// ------------------------------------------------------------------
+// CONFIGURATION
+// ------------------------------------------------------------------
+// Paste your Google Gemini API Key between the quotes below.
+// You can get one at: https://aistudio.google.com/app/apikey
+const MANUALLY_ENTERED_KEY = ""; 
+
 const getApiKey = () => {
+  // 1. Check manual entry first (User Preference)
+  if (MANUALLY_ENTERED_KEY) return MANUALLY_ENTERED_KEY;
+
+  // 2. Check Vercel/Netlify/Node environment variables
+  // @ts-ignore
   if (typeof process !== "undefined" && process.env && process.env.API_KEY) {
+    // @ts-ignore
     return process.env.API_KEY;
   }
-  // Try import.meta.env for Vite/modern bundlers if process is missing
+  
+  // 3. Check Vite/Modern Bundler variables
   // @ts-ignore
   if (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_KEY) {
     // @ts-ignore
     return import.meta.env.VITE_API_KEY;
   }
-  return ""; 
+
+  return "";
 };
 
 const apiKey = getApiKey();
@@ -92,24 +105,20 @@ Generate a self-contained HTML5 Canvas simulation AND a definition of external c
 ]
 `;
 
-export const generateSimulationCode = async (prompt: string, modelId: AIModelId = 'gemini-flash'): Promise<any> => {
+export const generateSimulationCode = async (prompt: string): Promise<any> => {
   if (!apiKey) {
-    throw new Error("API Key is missing. Please set API_KEY in your environment variables (Netlify Settings).");
+    throw new Error("API Key is missing. Please set API_KEY in your environment variables or services/geminiService.ts");
   }
 
   try {
-    // Note: For this demo environment, we route all requests to Gemini to ensure stability
-    // since we don't have active keys for Claude/OpenAI configured in the Bytez integration yet.
-    // In a full production build, `modelId` would switch the API endpoint.
-    console.log(`Generating using model: ${modelId}`);
+    console.log(`Generating simulation for: ${prompt}`);
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash', 
-      contents: `[Selected Model: ${modelId}] Create a simulation for: "${prompt}". Ensure it is physically accurate, visually stunning, and uses the message listener protocol for controls.`,
+      contents: `Create a simulation for: "${prompt}". Ensure it is physically accurate, visually stunning, and uses the message listener protocol for controls.`,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         responseMimeType: "application/json",
-        // responseSchema is intentionally removed to avoid RPC timeouts with large HTML strings.
       }
     });
 

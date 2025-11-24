@@ -4,8 +4,7 @@ import { generateSimulationCode } from './services/geminiService';
 import { SimulationViewer } from './components/SimulationViewer';
 import { LoadingState } from './components/LoadingState';
 import { Icons } from './components/Icons';
-import { ModelSelector } from './components/ModelSelector';
-import { GenerationStatus, GeneratedSimulation, AIModelId } from './types';
+import { GenerationStatus, GeneratedSimulation } from './types';
 
 const SUGGESTIONS = [
   "A double pendulum chaotic physics simulation",
@@ -17,7 +16,6 @@ const SUGGESTIONS = [
 
 const App: React.FC = () => {
   const [prompt, setPrompt] = useState('');
-  const [selectedModel, setSelectedModel] = useState<AIModelId>('gemini-flash');
   const [status, setStatus] = useState<GenerationStatus>(GenerationStatus.IDLE);
   const [simulation, setSimulation] = useState<GeneratedSimulation | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +28,7 @@ const App: React.FC = () => {
     setSimulation(null);
 
     try {
-      const data = await generateSimulationCode(prompt, selectedModel);
+      const data = await generateSimulationCode(prompt);
       setSimulation(data);
       setStatus(GenerationStatus.COMPLETED);
     } catch (err) {
@@ -41,7 +39,6 @@ const App: React.FC = () => {
 
   const handleSuggestion = (suggestion: string) => {
     setPrompt(suggestion);
-    // Optional: auto-submit could be added here
   };
 
   const resetSimulation = () => {
@@ -114,13 +111,6 @@ const App: React.FC = () => {
                 />
                 
                 <div className="absolute bottom-3 right-3 flex items-center gap-3">
-                  {/* Model Selector */}
-                  <ModelSelector 
-                    selectedModel={selectedModel} 
-                    onSelect={setSelectedModel} 
-                    disabled={status === GenerationStatus.GENERATING}
-                  />
-
                   <button
                     onClick={handleGenerate}
                     disabled={!prompt.trim() || status === GenerationStatus.GENERATING}

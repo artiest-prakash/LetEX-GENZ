@@ -36,7 +36,7 @@ export type AIModelId = 'gemini-flash' | 'claude-sonnet' | 'gpt-4o' | 'llama-3';
 export interface AIModel {
   id: AIModelId;
   name: string;
-  provider: 'Google' | 'Anthropic' | 'OpenAI' | 'Meta';
+  provider: string;
   description: string;
   color: string;
 }
