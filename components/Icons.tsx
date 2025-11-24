@@ -12,7 +12,8 @@ import {
   FlaskConical,
   X,
   ZoomIn,
-  ZoomOut
+  ZoomOut,
+  Check
 } from 'lucide-react';
 
 // Custom SVG Logo: 3D Tau (Torque) Symbol
@@ -70,5 +71,6 @@ export const Icons = {
   Lab: FlaskConical,
   Close: X,
   ZoomIn,
-  ZoomOut
+  ZoomOut,
+  Check
 };

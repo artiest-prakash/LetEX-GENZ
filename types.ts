@@ -30,3 +30,13 @@ export enum GenerationStatus {
 export interface SimulationRequest {
   prompt: string;
 }
+
+export type AIModelId = 'gemini-flash' | 'claude-sonnet' | 'gpt-4o' | 'llama-3';
+
+export interface AIModel {
+  id: AIModelId;
+  name: string;
+  provider: 'Google' | 'Anthropic' | 'OpenAI' | 'Meta';
+  description: string;
+  color: string;
+}

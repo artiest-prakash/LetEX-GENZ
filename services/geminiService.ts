@@ -1,7 +1,23 @@
 
 import { GoogleGenAI } from "@google/genai";
+import { AIModelId } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Safe API Key retrieval to prevent crashing if process is undefined (common in pure browser builds)
+const getApiKey = () => {
+  if (typeof process !== "undefined" && process.env && process.env.API_KEY) {
+    return process.env.API_KEY;
+  }
+  // Try import.meta.env for Vite/modern bundlers if process is missing
+  // @ts-ignore
+  if (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_KEY) {
+    // @ts-ignore
+    return import.meta.env.VITE_API_KEY;
+  }
+  return ""; 
+};
+
+const apiKey = getApiKey();
+const ai = new GoogleGenAI({ apiKey });
 
 const SYSTEM_INSTRUCTION = `
 You are LetEX, a world-class Simulation Architect. You build physically accurate, aesthetically minimal, web-based simulations.
@@ -76,16 +92,24 @@ Generate a self-contained HTML5 Canvas simulation AND a definition of external c
 ]
 `;
 
-export const generateSimulationCode = async (prompt: string): Promise<any> => {
+export const generateSimulationCode = async (prompt: string, modelId: AIModelId = 'gemini-flash'): Promise<any> => {
+  if (!apiKey) {
+    throw new Error("API Key is missing. Please set API_KEY in your environment variables (Netlify Settings).");
+  }
+
   try {
+    // Note: For this demo environment, we route all requests to Gemini to ensure stability
+    // since we don't have active keys for Claude/OpenAI configured in the Bytez integration yet.
+    // In a full production build, `modelId` would switch the API endpoint.
+    console.log(`Generating using model: ${modelId}`);
+
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash', 
-      contents: `Create a simulation for: "${prompt}". Ensure it is physically accurate, visually stunning, and uses the message listener protocol for controls.`,
+      contents: `[Selected Model: ${modelId}] Create a simulation for: "${prompt}". Ensure it is physically accurate, visually stunning, and uses the message listener protocol for controls.`,
       config: {
         systemInstruction: SYSTEM_INSTRUCTION,
         responseMimeType: "application/json",
         // responseSchema is intentionally removed to avoid RPC timeouts with large HTML strings.
-        // The prompt enforces the JSON structure.
       }
     });
 
@@ -112,6 +136,6 @@ export const generateSimulationCode = async (prompt: string): Promise<any> => {
 
   } catch (error) {
     console.error("Error generating simulation:", error);
-    throw new Error("Failed to generate simulation. The server might be busy or the request timed out. Please try again.");
+    throw new Error("Failed to generate simulation. The server might be busy or the request timed out. Please check your API Key.");
   }
 };

@@ -52,11 +52,15 @@ export const SimulationViewer: React.FC<SimulationViewerProps> = ({ simulation, 
   };
 
   const handleZoomIn = () => {
-    setZoom(prev => Math.min(prev + 0.1, 2.0));
+    setZoom(prev => Math.min(prev + 0.1, 2.5)); // Increased max zoom
   };
 
   const handleZoomOut = () => {
-    setZoom(prev => Math.max(prev - 0.1, 0.5));
+    setZoom(prev => Math.max(prev - 0.1, 0.25)); // Increased min zoom (wider view)
+  };
+
+  const handleResetZoom = () => {
+    setZoom(1);
   };
 
   // Listen for fullscreen change events to update state if user presses Esc
@@ -103,28 +107,33 @@ export const SimulationViewer: React.FC<SimulationViewerProps> = ({ simulation, 
         <div 
           ref={containerRef}
           className={`
-            relative w-full bg-slate-50 overflow-hidden rounded-xl
+            relative w-full bg-slate-50 overflow-hidden rounded-xl flex items-center justify-center
             ${isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : 'aspect-video'}
           `}
         >
+          {/* 
+            INVERSE VIEWPORT SCALING
+            To "Zoom Out" and see more context (hidden parts), we increase the width/height 
+            and scale it down. This acts like a wide-angle lens.
+          */}
           <iframe
             ref={iframeRef}
             srcDoc={simulation.code}
             title={simulation.title}
-            className="w-full h-full border-none transition-transform duration-200 ease-out"
+            className="border-none transition-all duration-300 ease-out shadow-sm"
             style={{ 
+              width: `${100 / zoom}%`,
+              height: `${100 / zoom}%`,
               transform: `scale(${zoom})`,
-              transformOrigin: 'center center'
+              // Flexbox handles the centering, scale applies from center
             }}
             sandbox="allow-scripts allow-same-origin"
           />
           
-          {/* Zoom Indicator (Transient) */}
-          {zoom !== 1 && !isFullscreen && (
-            <div className="absolute top-4 right-4 bg-slate-900/80 text-white text-xs px-2 py-1 rounded backdrop-blur-md z-10">
-              Zoom: {Math.round(zoom * 100)}%
-            </div>
-          )}
+          {/* Floating Zoom Indicator on Hover or Change */}
+          <div className="absolute top-4 right-4 bg-slate-900/80 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-md z-10 font-mono shadow-lg opacity-0 hover:opacity-100 transition-opacity duration-300">
+            Field of View: {Math.round(100 / zoom)}%
+          </div>
         </div>
       </div>
 
@@ -208,17 +217,23 @@ export const SimulationViewer: React.FC<SimulationViewerProps> = ({ simulation, 
                 <button 
                   onClick={handleZoomOut}
                   className="p-2 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors"
-                  title="Zoom Out"
+                  title="Zoom Out (See More)"
                 >
                   <Icons.ZoomOut className="w-4 h-4" />
                 </button>
-                <div className="flex-1 text-xs font-mono text-slate-400">
+                
+                <button 
+                  onClick={handleResetZoom}
+                  className="flex-1 text-xs font-mono text-slate-400 hover:text-white transition-colors text-center py-2 rounded hover:bg-slate-700/50"
+                  title="Reset View"
+                >
                   {Math.round(zoom * 100)}%
-                </div>
+                </button>
+                
                 <button 
                   onClick={handleZoomIn}
                   className="p-2 hover:bg-slate-700 rounded-lg text-white transition-colors"
-                  title="Zoom In"
+                  title="Zoom In (Focus)"
                 >
                   <Icons.ZoomIn className="w-4 h-4" />
                 </button>

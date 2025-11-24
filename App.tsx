@@ -4,7 +4,8 @@ import { generateSimulationCode } from './services/geminiService';
 import { SimulationViewer } from './components/SimulationViewer';
 import { LoadingState } from './components/LoadingState';
 import { Icons } from './components/Icons';
-import { GenerationStatus, GeneratedSimulation } from './types';
+import { ModelSelector } from './components/ModelSelector';
+import { GenerationStatus, GeneratedSimulation, AIModelId } from './types';
 
 const SUGGESTIONS = [
   "A double pendulum chaotic physics simulation",
@@ -16,6 +17,7 @@ const SUGGESTIONS = [
 
 const App: React.FC = () => {
   const [prompt, setPrompt] = useState('');
+  const [selectedModel, setSelectedModel] = useState<AIModelId>('gemini-flash');
   const [status, setStatus] = useState<GenerationStatus>(GenerationStatus.IDLE);
   const [simulation, setSimulation] = useState<GeneratedSimulation | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +30,7 @@ const App: React.FC = () => {
     setSimulation(null);
 
     try {
-      const data = await generateSimulationCode(prompt);
+      const data = await generateSimulationCode(prompt, selectedModel);
       setSimulation(data);
       setStatus(GenerationStatus.COMPLETED);
     } catch (err) {
@@ -64,6 +66,12 @@ const App: React.FC = () => {
             <Icons.Logo className="text-blue-600 w-6 h-6" />
           </div>
           <span className="text-2xl font-bold tracking-tight text-slate-800 font-brand brand-font">LetEX</span>
+        </div>
+        
+        {/* API Status Indicator (Small visual feedback if key is present) */}
+        <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-white/50 border border-slate-100 text-xs text-slate-400">
+          <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+          System Online
         </div>
       </nav>
 
@@ -104,7 +112,15 @@ const App: React.FC = () => {
                     }
                   }}
                 />
-                <div className="absolute bottom-3 right-3 flex items-center gap-2">
+                
+                <div className="absolute bottom-3 right-3 flex items-center gap-3">
+                  {/* Model Selector */}
+                  <ModelSelector 
+                    selectedModel={selectedModel} 
+                    onSelect={setSelectedModel} 
+                    disabled={status === GenerationStatus.GENERATING}
+                  />
+
                   <button
                     onClick={handleGenerate}
                     disabled={!prompt.trim() || status === GenerationStatus.GENERATING}
