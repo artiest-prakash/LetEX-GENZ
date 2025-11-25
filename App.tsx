@@ -1,10 +1,10 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { generateSimulationCode } from './services/geminiService';
+import { supabase } from './services/supabaseClient';
 import { SimulationViewer } from './components/SimulationViewer';
 import { LoadingState } from './components/LoadingState';
 import { Icons } from './components/Icons';
-import { GenerationStatus, GeneratedSimulation } from './types';
+import { GenerationStatus, GeneratedSimulation, HistoryItem } from './types';
 
 const SUGGESTIONS = [
   "A double pendulum chaotic physics simulation",
@@ -19,6 +19,60 @@ const App: React.FC = () => {
   const [status, setStatus] = useState<GenerationStatus>(GenerationStatus.IDLE);
   const [simulation, setSimulation] = useState<GeneratedSimulation | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // Auth & History State
+  const [user, setUser] = useState<any>(null);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  // Initialize Auth & Load History
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+      if (session?.user) fetchHistory(session.user.id);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        fetchHistory(session.user.id);
+      } else {
+        setHistory([]);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const fetchHistory = async (userId: string) => {
+    setIsLoadingHistory(true);
+    const { data, error } = await supabase
+      .from('simulations')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      setHistory(data as HistoryItem[]);
+    } else {
+      console.warn("Could not fetch history (Table may not exist yet)", error);
+    }
+    setIsLoadingHistory(false);
+  };
+
+  const handleLogin = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+      }
+    });
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    resetSimulation();
+  };
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -31,10 +85,30 @@ const App: React.FC = () => {
       const data = await generateSimulationCode(prompt);
       setSimulation(data);
       setStatus(GenerationStatus.COMPLETED);
+      
+      // Save to history if logged in
+      if (user) {
+        const { error: saveError } = await supabase.from('simulations').insert({
+          user_id: user.id,
+          title: data.title,
+          prompt: prompt,
+          simulation_data: data
+        });
+        if (!saveError) fetchHistory(user.id);
+      }
+
     } catch (err) {
       setError(err instanceof Error ? err.message : "An unknown error occurred");
       setStatus(GenerationStatus.ERROR);
     }
+  };
+
+  const loadFromHistory = (item: HistoryItem) => {
+    setPrompt(item.prompt);
+    setSimulation(item.simulation_data);
+    setStatus(GenerationStatus.COMPLETED);
+    // Scroll to top to see simulation
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleSuggestion = (suggestion: string) => {
@@ -46,6 +120,16 @@ const App: React.FC = () => {
     setStatus(GenerationStatus.IDLE);
     setPrompt('');
   };
+
+  // Greeting Logic
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good Morning";
+    if (hour < 18) return "Good Afternoon";
+    return "Good Evening";
+  };
+
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || "Explorer";
 
   return (
     <div className="min-h-screen flex flex-col relative overflow-x-hidden selection:bg-blue-100 selection:text-blue-900 bg-[#f8fafc]">
@@ -65,10 +149,45 @@ const App: React.FC = () => {
           <span className="text-2xl font-bold tracking-tight text-slate-800 font-brand brand-font">LetEX</span>
         </div>
         
-        {/* System Status */}
-        <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-white/50 border border-slate-100 text-xs text-slate-400">
-          <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-          System Online
+        {/* Auth / Profile */}
+        <div className="flex items-center gap-4">
+          <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-white/50 border border-slate-100 text-xs text-slate-400">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+            System Online
+          </div>
+          
+          {user ? (
+             <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
+                <div className="flex items-center gap-2">
+                  {user.user_metadata?.avatar_url ? (
+                    <img src={user.user_metadata.avatar_url} alt="Profile" className="w-8 h-8 rounded-full border border-slate-200" />
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
+                      {userName[0]}
+                    </div>
+                  )}
+                  <div className="hidden sm:block text-right">
+                    <p className="text-xs font-bold text-slate-700 leading-tight">{userName}</p>
+                    <p className="text-[10px] text-slate-400 leading-tight">Pro Member</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={handleLogout}
+                  className="p-2 hover:bg-slate-100 text-slate-400 hover:text-red-500 rounded-full transition-colors"
+                  title="Sign Out"
+                >
+                  <Icons.LogOut className="w-4 h-4" />
+                </button>
+             </div>
+          ) : (
+            <button
+              onClick={handleLogin}
+              className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 border border-slate-200 hover:border-blue-300 hover:shadow-sm rounded-lg text-sm font-semibold transition-all"
+            >
+              <Icons.Google className="w-4 h-4" />
+              <span>Sign In</span>
+            </button>
+          )}
         </div>
       </nav>
 
@@ -77,14 +196,23 @@ const App: React.FC = () => {
         
         {/* Hero Section */}
         {status === GenerationStatus.IDLE && (
-          <div className="text-center mb-12 animate-in slide-in-from-bottom-5 fade-in duration-700 max-w-5xl mx-auto mt-10">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider mb-8 shadow-sm">
+          <div className="text-center mb-10 animate-in slide-in-from-bottom-5 fade-in duration-700 max-w-5xl mx-auto mt-6">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider mb-6 shadow-sm">
               <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
               AI-Powered Simulation Engine v2.0
             </div>
-            <h1 className="text-5xl md:text-7xl font-bold text-slate-900 tracking-tight mb-8 leading-[1.1]">
-              Welcome To <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Reality</span>
+            
+            <h1 className="text-5xl md:text-7xl font-bold text-slate-900 tracking-tight mb-6 leading-[1.1]">
+              {user ? (
+                <>
+                   <span className="text-slate-400 font-normal block text-3xl md:text-4xl mb-2">{getGreeting()}, {userName}</span>
+                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Ready to Discover?</span>
+                </>
+              ) : (
+                <>Welcome To <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Reality</span></>
+              )}
             </h1>
+            
             <p className="text-lg md:text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed">
               Describe a physics experiment, a game, or a scientific model. LetEX generates accurate, interactive simulations instantly.
             </p>
@@ -93,7 +221,7 @@ const App: React.FC = () => {
 
         {/* Input Section */}
         {status !== GenerationStatus.COMPLETED && (
-          <div className={`w-full transition-all duration-700 ease-in-out ${status !== GenerationStatus.IDLE ? 'mb-8' : 'mb-16'}`}>
+          <div className={`w-full transition-all duration-700 ease-in-out ${status !== GenerationStatus.IDLE ? 'mb-8' : 'mb-12'}`}>
             <div className={`bg-white p-2 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 flex flex-col gap-4 transition-all duration-500 ${status !== GenerationStatus.IDLE ? 'max-w-3xl mx-auto' : 'max-w-2xl mx-auto'}`}>
               <div className="relative">
                 <textarea
@@ -139,7 +267,7 @@ const App: React.FC = () => {
             
             {/* Suggestions */}
             {status === GenerationStatus.IDLE && (
-              <div className="mt-10 flex flex-wrap justify-center gap-3 max-w-4xl mx-auto">
+              <div className="mt-8 flex flex-wrap justify-center gap-3 max-w-4xl mx-auto">
                 {SUGGESTIONS.map((s, i) => (
                   <button
                     key={i}
@@ -149,6 +277,40 @@ const App: React.FC = () => {
                     {s}
                   </button>
                 ))}
+              </div>
+            )}
+
+            {/* Simulation History Cards */}
+            {status === GenerationStatus.IDLE && user && history.length > 0 && (
+              <div className="mt-16 max-w-5xl mx-auto w-full">
+                <div className="flex items-center gap-2 mb-4 px-2">
+                  <Icons.History className="w-4 h-4 text-slate-400" />
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Recent Simulations</h3>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {history.map((item) => (
+                    <div 
+                      key={item.id}
+                      onClick={() => loadFromHistory(item)}
+                      className="group bg-white hover:bg-blue-50/50 border border-slate-100 hover:border-blue-200 p-4 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col h-full"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="bg-blue-100 text-blue-600 p-2 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                          <Icons.Lab className="w-4 h-4" />
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-mono">
+                          {new Date(item.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <h4 className="font-bold text-slate-800 group-hover:text-blue-700 line-clamp-1 mb-1">{item.title || "Untitled Simulation"}</h4>
+                      <p className="text-xs text-slate-500 line-clamp-2 mb-3">{item.prompt}</p>
+                      <div className="mt-auto flex items-center text-xs font-semibold text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                        Load Environment <Icons.ArrowRight className="w-3 h-3 ml-1" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

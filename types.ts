@@ -1,4 +1,3 @@
-
 export type ControlType = 'slider' | 'button' | 'select' | 'toggle';
 
 export interface SimulationControl {
@@ -20,6 +19,14 @@ export interface GeneratedSimulation {
   controls: SimulationControl[]; // List of controls to render externally
 }
 
+export interface HistoryItem {
+  id: number;
+  created_at: string;
+  title: string;
+  prompt: string;
+  simulation_data: GeneratedSimulation;
+}
+
 export enum GenerationStatus {
   IDLE = 'IDLE',
   GENERATING = 'GENERATING',
@@ -31,6 +38,7 @@ export interface SimulationRequest {
   prompt: string;
 }
 
+// These can be removed if strictly not used, but kept for compatibility if needed.
 export type AIModelId = 'gemini-flash' | 'claude-sonnet' | 'gpt-4o' | 'llama-3';
 
 export interface AIModel {
