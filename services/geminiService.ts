@@ -1,13 +1,17 @@
-
 import { GoogleGenAI } from "@google/genai";
+// @ts-ignore
+import Bytez from "bytez.js";
+import { GeneratedSimulation } from "../types";
 
 // ------------------------------------------------------------------
 // CONFIGURATION
 // ------------------------------------------------------------------
+const GOOGLE_API_KEY = "AIzaSyA3Soixg6FGUNl_ES7nnCMH6rbGIRtvmhk";
+const BYTEZ_API_KEY = "e6b8a35abc212f3d60a7672c8d8e2e9f";
 
-// Initialize the client using process.env.API_KEY as per guidelines
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
+// ------------------------------------------------------------------
+// SYSTEM INSTRUCTION
+// ------------------------------------------------------------------
 const SYSTEM_INSTRUCTION = `
 You are LetEX, a world-class Simulation Architect. You build physically accurate, aesthetically minimal, web-based simulations.
 
@@ -55,41 +59,124 @@ Generate a self-contained HTML5 Canvas simulation AND a definition of external c
      }
 `;
 
-export const generateSimulationCode = async (prompt: string): Promise<any> => {
+// ------------------------------------------------------------------
+// UTILITIES
+// ------------------------------------------------------------------
+
+/**
+ * Robustly parses JSON from AI response, handling markdown blocks 
+ * and conversational text wrapper.
+ */
+const cleanAndParseJSON = (text: string): GeneratedSimulation => {
+  let jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
+
+  // Advanced Extraction: Find the outer brackets
+  const firstBrace = jsonString.indexOf('{');
+  const lastBrace = jsonString.lastIndexOf('}');
+  
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    jsonString = jsonString.substring(firstBrace, lastBrace + 1);
+  }
+  
+  let data;
   try {
-    console.log(`Generating simulation for: ${prompt}`);
+      data = JSON.parse(jsonString);
+  } catch (e) {
+      console.error("Failed to parse JSON:", jsonString.substring(0, 100) + "...");
+      throw new Error("Received malformed data from AI.");
+  }
+  
+  if (!data.code || !data.controls) {
+      throw new Error("Incomplete simulation data generated.");
+  }
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash', 
-      contents: `Create a simulation for: "${prompt}". Ensure it is physically accurate, visually stunning, and uses the message listener protocol for controls.`,
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        responseMimeType: "application/json",
-      }
-    });
+  return data as GeneratedSimulation;
+};
 
-    const text = response.text;
-    if (!text) throw new Error("No response from AI");
+// ------------------------------------------------------------------
+// PRIMARY ENGINE: GOOGLE SDK
+// ------------------------------------------------------------------
+const generateWithGoogle = async (prompt: string): Promise<GeneratedSimulation> => {
+  console.log(`[Primary] Generating via Google GenAI (Gemini 2.5 Flash)...`);
+  const ai = new GoogleGenAI({ apiKey: GOOGLE_API_KEY });
+  
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: `Create a simulation for: "${prompt}". Return ONLY valid JSON. No conversational text.`,
+    config: {
+      systemInstruction: SYSTEM_INSTRUCTION,
+    }
+  });
+
+  const text = response.text;
+  if (!text) throw new Error("No response output from Google AI.");
+
+  return cleanAndParseJSON(text);
+};
+
+// ------------------------------------------------------------------
+// FALLBACK ENGINE: BYTEZ SDK
+// ------------------------------------------------------------------
+const generateWithBytez = async (prompt: string): Promise<GeneratedSimulation> => {
+  console.log(`[Fallback] Generating via Bytez SDK...`);
+  
+  let sdk;
+  try {
+    sdk = new Bytez(BYTEZ_API_KEY);
+  } catch (e) {
+    throw new Error("Bytez SDK failed to initialize.");
+  }
+
+  // We use a high-quality model on Bytez as fallback. 
+  // 'google/gemini-2.5-flash' is often available, or we could use 'meta-llama/Meta-Llama-3-70B-Instruct'
+  const model = sdk.model("google/gemini-2.5-flash");
+
+  const messages = [
+    { "role": "system", "content": SYSTEM_INSTRUCTION },
+    { "role": "user", "content": `Create a simulation for: "${prompt}". Return ONLY valid JSON.` }
+  ];
+
+  const { error, output } = await model.run(messages);
+
+  if (error) {
+    throw new Error("Bytez API Error: " + JSON.stringify(error));
+  }
+  
+  if (!output) {
+    throw new Error("No output from Bytez.");
+  }
+
+  // Handle Bytez output format (can be object or string)
+  let rawText = '';
+  if (typeof output === 'object' && output !== null && 'content' in output) {
+    rawText = (output as any).content;
+  } else if (typeof output === 'string') {
+    rawText = output;
+  } else {
+    rawText = JSON.stringify(output);
+  }
+
+  return cleanAndParseJSON(rawText);
+};
+
+// ------------------------------------------------------------------
+// MAIN EXPORT
+// ------------------------------------------------------------------
+export const generateSimulationCode = async (prompt: string): Promise<GeneratedSimulation> => {
+  try {
+    // 1. Try Primary (Google)
+    return await generateWithGoogle(prompt);
+  } catch (googleError) {
+    console.warn("Primary AI Engine failed. Switching to Fallback...", googleError);
     
-    // Clean up potential markdown if the model ignores the instruction
-    const jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    
-    let data;
     try {
-        data = JSON.parse(jsonString);
-    } catch (e) {
-        console.error("Failed to parse JSON:", jsonString.substring(0, 100) + "...");
-        throw new Error("Received malformed data from AI. Please try again.");
+      // 2. Try Fallback (Bytez)
+      return await generateWithBytez(prompt);
+    } catch (bytezError) {
+      console.error("Fallback AI Engine failed.", bytezError);
+      throw new Error(
+        "Simulation generation failed on both primary and fallback engines. Please try again later."
+      );
     }
-    
-    if (!data.code || !data.controls) {
-        throw new Error("Incomplete simulation data generated.");
-    }
-
-    return data;
-
-  } catch (error) {
-    console.error("Error generating simulation:", error);
-    throw new Error("Failed to generate simulation. Please check your API Key settings.");
   }
 };
