@@ -24,6 +24,7 @@ const App: React.FC = () => {
   const [user, setUser] = useState<any>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [saveStatus, setSaveStatus] = useState<'saving' | 'saved' | 'error' | null>(null);
 
   // Initialize Auth & Load History
   useEffect(() => {
@@ -52,10 +53,10 @@ const App: React.FC = () => {
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
 
-    if (!error && data) {
+    if (error) {
+      console.error("Error fetching history:", error.message);
+    } else if (data) {
       setHistory(data as HistoryItem[]);
-    } else {
-      console.warn("Could not fetch history (Table may not exist yet)", error);
     }
     setIsLoadingHistory(false);
   };
@@ -80,33 +81,50 @@ const App: React.FC = () => {
     setStatus(GenerationStatus.GENERATING);
     setError(null);
     setSimulation(null);
+    setSaveStatus(null);
 
     try {
+      // 1. Generate Simulation
       const data = await generateSimulationCode(prompt);
       setSimulation(data);
       setStatus(GenerationStatus.COMPLETED);
       
-      // Save to history if logged in
+      // 2. Save to history if logged in
       if (user) {
+        setSaveStatus('saving');
+        console.log("Saving simulation to Supabase for user:", user.id);
+        
         const { error: saveError } = await supabase.from('simulations').insert({
           user_id: user.id,
           title: data.title,
           prompt: prompt,
-          simulation_data: data
+          simulation_data: data // Supabase client handles JSON object serialization
         });
-        if (!saveError) fetchHistory(user.id);
+
+        if (saveError) {
+          console.error("Supabase Save Failed:", saveError);
+          setSaveStatus('error');
+        } else {
+          console.log("Simulation saved successfully.");
+          setSaveStatus('saved');
+          // Refresh history list
+          fetchHistory(user.id);
+        }
       }
 
     } catch (err) {
+      console.error("Generation/Save Error:", err);
       setError(err instanceof Error ? err.message : "An unknown error occurred");
       setStatus(GenerationStatus.ERROR);
     }
   };
 
   const loadFromHistory = (item: HistoryItem) => {
+    console.log("Loading from history:", item.title);
     setPrompt(item.prompt);
     setSimulation(item.simulation_data);
     setStatus(GenerationStatus.COMPLETED);
+    setSaveStatus('saved'); // It's already saved
     // Scroll to top to see simulation
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -119,6 +137,7 @@ const App: React.FC = () => {
     setSimulation(null);
     setStatus(GenerationStatus.IDLE);
     setPrompt('');
+    setSaveStatus(null);
   };
 
   // Greeting Logic
@@ -152,8 +171,8 @@ const App: React.FC = () => {
         {/* Auth / Profile */}
         <div className="flex items-center gap-4">
           <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-white/50 border border-slate-100 text-xs text-slate-400">
-            <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-            System Online
+            <div className={`w-1.5 h-1.5 rounded-full ${status === GenerationStatus.GENERATING ? 'bg-blue-500 animate-ping' : 'bg-green-500 animate-pulse'}`} />
+            {status === GenerationStatus.GENERATING ? 'Processing' : 'System Online'}
           </div>
           
           {user ? (
@@ -281,36 +300,45 @@ const App: React.FC = () => {
             )}
 
             {/* Simulation History Cards */}
-            {status === GenerationStatus.IDLE && user && history.length > 0 && (
+            {status === GenerationStatus.IDLE && user && (
               <div className="mt-16 max-w-5xl mx-auto w-full">
-                <div className="flex items-center gap-2 mb-4 px-2">
-                  <Icons.History className="w-4 h-4 text-slate-400" />
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Recent Simulations</h3>
+                <div className="flex items-center justify-between mb-4 px-2">
+                  <div className="flex items-center gap-2">
+                    <Icons.History className="w-4 h-4 text-slate-400" />
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Recent Simulations</h3>
+                  </div>
+                  {isLoadingHistory && <Icons.Refresh className="w-3 h-3 text-slate-400 animate-spin" />}
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {history.map((item) => (
-                    <div 
-                      key={item.id}
-                      onClick={() => loadFromHistory(item)}
-                      className="group bg-white hover:bg-blue-50/50 border border-slate-100 hover:border-blue-200 p-4 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col h-full"
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="bg-blue-100 text-blue-600 p-2 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                          <Icons.Lab className="w-4 h-4" />
+                {history.length === 0 ? (
+                  <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-xl">
+                    <p className="text-slate-400 text-sm">No simulations saved yet. Try creating one!</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {history.map((item) => (
+                      <div 
+                        key={item.id}
+                        onClick={() => loadFromHistory(item)}
+                        className="group bg-white hover:bg-blue-50/50 border border-slate-100 hover:border-blue-200 p-4 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer flex flex-col h-full animate-in fade-in slide-in-from-bottom-2 duration-500"
+                      >
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="bg-blue-100 text-blue-600 p-2 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                            <Icons.Lab className="w-4 h-4" />
+                          </div>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {new Date(item.created_at).toLocaleDateString()}
+                          </span>
                         </div>
-                        <span className="text-[10px] text-slate-400 font-mono">
-                          {new Date(item.created_at).toLocaleDateString()}
-                        </span>
+                        <h4 className="font-bold text-slate-800 group-hover:text-blue-700 line-clamp-1 mb-1">{item.title || "Untitled Simulation"}</h4>
+                        <p className="text-xs text-slate-500 line-clamp-2 mb-3">{item.prompt}</p>
+                        <div className="mt-auto flex items-center text-xs font-semibold text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                          Load Environment <Icons.ArrowRight className="w-3 h-3 ml-1" />
+                        </div>
                       </div>
-                      <h4 className="font-bold text-slate-800 group-hover:text-blue-700 line-clamp-1 mb-1">{item.title || "Untitled Simulation"}</h4>
-                      <p className="text-xs text-slate-500 line-clamp-2 mb-3">{item.prompt}</p>
-                      <div className="mt-auto flex items-center text-xs font-semibold text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                        Load Environment <Icons.ArrowRight className="w-3 h-3 ml-1" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -339,10 +367,18 @@ const App: React.FC = () => {
           )}
 
           {status === GenerationStatus.COMPLETED && simulation && (
-             <SimulationViewer 
-                simulation={simulation}
-                onClose={resetSimulation}
-             />
+             <div className="relative">
+               {saveStatus === 'saved' && (
+                 <div className="absolute top-0 right-0 -mt-10 mb-4 bg-green-100 text-green-700 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 animate-in fade-in slide-in-from-top-2 z-50 shadow-sm border border-green-200">
+                   <Icons.Check className="w-3 h-3" />
+                   Saved to History
+                 </div>
+               )}
+               <SimulationViewer 
+                  simulation={simulation}
+                  onClose={resetSimulation}
+               />
+             </div>
           )}
         </div>
       </main>

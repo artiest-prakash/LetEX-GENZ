@@ -6,6 +6,8 @@ import { GeneratedSimulation } from "../types";
 // ------------------------------------------------------------------
 // CONFIGURATION
 // ------------------------------------------------------------------
+// Fallback key provided by user for immediate stability on Vercel
+const GOOGLE_API_KEY = process.env.API_KEY || "AIzaSyA3Soixg6FGUNl_ES7nnCMH6rbGIRtvmhk";
 const BYTEZ_API_KEY = "e6b8a35abc212f3d60a7672c8d8e2e9f";
 
 // ------------------------------------------------------------------
@@ -97,7 +99,7 @@ const cleanAndParseJSON = (text: string): GeneratedSimulation => {
 // ------------------------------------------------------------------
 const generateWithGoogle = async (prompt: string): Promise<GeneratedSimulation> => {
   console.log(`[Primary] Generating via Google GenAI (Gemini 2.5 Flash)...`);
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = new GoogleGenAI({ apiKey: GOOGLE_API_KEY });
   
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash',
