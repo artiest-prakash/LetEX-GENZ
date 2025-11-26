@@ -6,6 +6,7 @@ import { SimulationViewer } from './components/SimulationViewer';
 import { LoadingState } from './components/LoadingState';
 import { AboutPage } from './components/AboutPage';
 import { TermsPage } from './components/TermsPage';
+import { ChatBot } from './components/ChatBot';
 import { Icons } from './components/Icons';
 import { GenerationStatus, GeneratedSimulation, HistoryItem } from './types';
 
@@ -22,6 +23,7 @@ type Page = 'home' | 'about' | 'terms';
 const App: React.FC = () => {
   // Navigation State
   const [currentPage, setCurrentPage] = useState<Page>('home');
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   const [prompt, setPrompt] = useState('');
   const [status, setStatus] = useState<GenerationStatus>(GenerationStatus.IDLE);
@@ -202,6 +204,19 @@ const App: React.FC = () => {
               className={`text-sm font-medium transition-colors ${currentPage === 'about' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'}`}
             >
               About
+            </button>
+            {/* LetEX AI Button */}
+            <button 
+              onClick={() => setIsChatOpen(!isChatOpen)}
+              className={`
+                flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold transition-all border
+                ${isChatOpen 
+                  ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-500/30' 
+                  : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-600'}
+              `}
+            >
+              <Icons.Sparkles className={`w-3.5 h-3.5 ${isChatOpen ? 'text-yellow-300' : 'text-blue-500'}`} />
+              LetEX AI
             </button>
           </div>
         </div>
@@ -421,6 +436,9 @@ const App: React.FC = () => {
           </button>
         </div>
       </footer>
+      
+      {/* Chat Bot Container */}
+      <ChatBot isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
 
     </div>
   );

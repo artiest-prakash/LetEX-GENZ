@@ -2,7 +2,7 @@
 import { GoogleGenAI } from "@google/genai";
 // @ts-ignore
 import Bytez from "bytez.js";
-import { GeneratedSimulation } from "../types";
+import { GeneratedSimulation, ChatMessage } from "../types";
 
 // ------------------------------------------------------------------
 // CONFIGURATION
@@ -12,9 +12,9 @@ const GOOGLE_API_KEY = process.env.API_KEY || "AIzaSyA3Soixg6FGUNl_ES7nnCMH6rbGI
 const BYTEZ_API_KEY = "e6b8a35abc212f3d60a7672c8d8e2e9f";
 
 // ------------------------------------------------------------------
-// SYSTEM INSTRUCTION
+// SYSTEM INSTRUCTIONS
 // ------------------------------------------------------------------
-const SYSTEM_INSTRUCTION = `
+const SIMULATION_SYSTEM_INSTRUCTION = `
 You are LetEX, a world-class Simulation Architect. You build physically accurate, aesthetically minimal, web-based simulations.
 
 ### GOAL
@@ -78,18 +78,31 @@ Generate a self-contained HTML5 Canvas simulation AND a definition of external c
      }
 `;
 
+const CHAT_SYSTEM_INSTRUCTION = `
+You are LetEX AI, a friendly and highly intelligent Virtual Lab Assistant. 🧪✨
+Your goal is to explain physics, science, and simulation concepts in a fun, engaging way.
+
+### VISUAL & STYLE RULES:
+1. **Friendly Persona**: Use emojis (🚀, ⚛️, 🔬, ✨) frequently to keep the tone light and futuristic.
+2. **Blue Highlighting**: You MUST wrap key scientific terms, formulas, or important concepts in **double asterisks** (e.g., **Quantum Mechanics**). The UI will render these in a beautiful Blue color.
+3. **Image Generation**: If the user asks for an image or if a visual would help explain a concept, generate a Markdown image using the Pollinations AI URL format: 
+   \`![Alt Text](https://image.pollinations.ai/prompt/{descriptive_keywords})\`
+   Replace {descriptive_keywords} with a clear English description of the image (e.g., 'solar_system_orbit_planets_realistic').
+4. **Brevity**: Keep responses concise but informative. Avoid writing huge walls of text.
+
+### EXAMPLE:
+User: "Explain gravity."
+AI: "Gravity is the **fundamental force** that attracts two bodies with mass! 🌍✨ It's what keeps us grounded on Earth and makes planets orbit the Sun. According to **General Relativity**, it's actually the curvature of **spacetime**! 🌌
+![Gravity Spacetime](https://image.pollinations.ai/prompt/spacetime_curvature_gravity_physics_3d_render)"
+`;
+
 // ------------------------------------------------------------------
 // UTILITIES
 // ------------------------------------------------------------------
 
-/**
- * Robustly parses JSON from AI response, handling markdown blocks 
- * and conversational text wrapper.
- */
 const cleanAndParseJSON = (text: string): GeneratedSimulation => {
   let jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
-  // Advanced Extraction: Find the outer brackets
   const firstBrace = jsonString.indexOf('{');
   const lastBrace = jsonString.lastIndexOf('}');
   
@@ -113,7 +126,7 @@ const cleanAndParseJSON = (text: string): GeneratedSimulation => {
 };
 
 // ------------------------------------------------------------------
-// PRIMARY ENGINE: GOOGLE SDK
+// SIMULATION ENGINE (Google Primary)
 // ------------------------------------------------------------------
 const generateWithGoogle = async (prompt: string): Promise<GeneratedSimulation> => {
   console.log(`[Primary] Generating via Google GenAI (Gemini 2.5 Flash)...`);
@@ -123,7 +136,7 @@ const generateWithGoogle = async (prompt: string): Promise<GeneratedSimulation> 
     model: 'gemini-2.5-flash',
     contents: `Create a simulation for: "${prompt}". Return ONLY valid JSON. No conversational text.`,
     config: {
-      systemInstruction: SYSTEM_INSTRUCTION,
+      systemInstruction: SIMULATION_SYSTEM_INSTRUCTION,
     }
   });
 
@@ -134,7 +147,29 @@ const generateWithGoogle = async (prompt: string): Promise<GeneratedSimulation> 
 };
 
 // ------------------------------------------------------------------
-// FALLBACK ENGINE: BYTEZ SDK
+// CHAT ENGINE
+// ------------------------------------------------------------------
+export const generateChatResponse = async (history: ChatMessage[], newMessage: string): Promise<string> => {
+  console.log(`[Chat] Generating response for: ${newMessage}`);
+  const ai = new GoogleGenAI({ apiKey: GOOGLE_API_KEY });
+  
+  // Format history for context (simplified)
+  const context = history.map(msg => `${msg.role === 'user' ? 'User' : 'AI'}: ${msg.content}`).join('\n');
+  const fullPrompt = `${context}\nUser: ${newMessage}\nAI:`;
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: fullPrompt,
+    config: {
+      systemInstruction: CHAT_SYSTEM_INSTRUCTION,
+    }
+  });
+
+  return response.text || "I'm having trouble connecting to my neural network right now. 🔌 Please try again! 🤖";
+};
+
+// ------------------------------------------------------------------
+// FALLBACK ENGINE (Bytez)
 // ------------------------------------------------------------------
 const generateWithBytez = async (prompt: string): Promise<GeneratedSimulation> => {
   console.log(`[Fallback] Generating via Bytez SDK...`);
@@ -146,12 +181,10 @@ const generateWithBytez = async (prompt: string): Promise<GeneratedSimulation> =
     throw new Error("Bytez SDK failed to initialize.");
   }
 
-  // We use a high-quality model on Bytez as fallback. 
-  // 'google/gemini-2.5-flash' is often available, or we could use 'meta-llama/Meta-Llama-3-70B-Instruct'
   const model = sdk.model("google/gemini-2.5-flash");
 
   const messages = [
-    { "role": "system", "content": SYSTEM_INSTRUCTION },
+    { "role": "system", "content": SIMULATION_SYSTEM_INSTRUCTION },
     { "role": "user", "content": `Create a simulation for: "${prompt}". Return ONLY valid JSON.` }
   ];
 
@@ -165,7 +198,6 @@ const generateWithBytez = async (prompt: string): Promise<GeneratedSimulation> =
     throw new Error("No output from Bytez.");
   }
 
-  // Handle Bytez output format (can be object or string)
   let rawText = '';
   if (typeof output === 'object' && output !== null && 'content' in output) {
     rawText = (output as any).content;
@@ -183,13 +215,10 @@ const generateWithBytez = async (prompt: string): Promise<GeneratedSimulation> =
 // ------------------------------------------------------------------
 export const generateSimulationCode = async (prompt: string): Promise<GeneratedSimulation> => {
   try {
-    // 1. Try Primary (Google)
     return await generateWithGoogle(prompt);
   } catch (googleError) {
     console.warn("Primary AI Engine failed. Switching to Fallback...", googleError);
-    
     try {
-      // 2. Try Fallback (Bytez)
       return await generateWithBytez(prompt);
     } catch (bytezError) {
       console.error("Fallback AI Engine failed.", bytezError);
@@ -199,4 +228,3 @@ export const generateSimulationCode = async (prompt: string): Promise<GeneratedS
     }
   }
 };
-    

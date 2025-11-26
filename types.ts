@@ -1,3 +1,4 @@
+
 export type ControlType = 'slider' | 'button' | 'select' | 'toggle';
 
 export interface SimulationControl {
@@ -38,7 +39,15 @@ export interface SimulationRequest {
   prompt: string;
 }
 
-// These can be removed if strictly not used, but kept for compatibility if needed.
+// ChatBot Types
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
+}
+
+// AI Model Types
 export type AIModelId = 'gemini-flash' | 'claude-sonnet' | 'gpt-4o' | 'llama-3';
 
 export interface AIModel {
