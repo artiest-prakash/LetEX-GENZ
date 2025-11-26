@@ -26,6 +26,7 @@ export interface HistoryItem {
   title: string;
   prompt: string;
   simulation_data: GeneratedSimulation;
+  user_id?: string;
 }
 
 export enum GenerationStatus {
@@ -57,3 +58,5 @@ export interface AIModel {
   description: string;
   color: string;
 }
+
+export type Page = 'home' | 'about' | 'terms' | '3d' | 'community';

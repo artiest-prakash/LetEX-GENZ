@@ -7,7 +7,6 @@ import { GeneratedSimulation, ChatMessage } from "../types";
 // ------------------------------------------------------------------
 // CONFIGURATION
 // ------------------------------------------------------------------
-// Fallback key provided by user for immediate stability on Vercel
 const GOOGLE_API_KEY = process.env.API_KEY || "AIzaSyA3Soixg6FGUNl_ES7nnCMH6rbGIRtvmhk";
 const BYTEZ_API_KEY = "e6b8a35abc212f3d60a7672c8d8e2e9f";
 
@@ -78,6 +77,34 @@ Generate a self-contained HTML5 Canvas simulation AND a definition of external c
      }
 `;
 
+const THREE_D_SYSTEM_INSTRUCTION = `
+You are LetEX 3D, a master of WebGL and Three.js. You build stunning 3D simulations.
+
+### GOAL
+Generate a self-contained HTML file using Three.js (via CDN) to visualize the requested 3D simulation.
+
+### REQUIREMENTS
+1. **Libraries**: Use <script type="importmap"> to import three from "https://unpkg.com/three@0.160.0/build/three.module.js" and controls if needed.
+2. **Visuals**:
+   - Use soft lighting, shadows, and clean materials.
+   - Background: Dark Hex (#0f172a) or Space theme.
+   - High performance.
+3. **Interactivity**:
+   - MUST implement the same window.addEventListener('message') protocol as the 2D simulations for external controls.
+   - Support window resize.
+4. **Output**: Return strictly valid JSON with "code" (HTML) and "controls". Same JSON structure as standard simulations.
+`;
+
+const REFINE_SYSTEM_INSTRUCTION = `
+You are a Senior Code Refactorer for Physics Simulations. 
+Your task is to EDIT existing HTML/JS simulation code based on a User Request.
+
+1. Keep the existing structure and 'message' event listeners.
+2. Apply the user's changes (e.g., "Add gravity", "Change color to red", "Make it faster").
+3. Return the FULL updated JSON object with the new "code" and updated "controls" if the request requires new sliders.
+4. Output ONLY valid JSON.
+`;
+
 const CHAT_SYSTEM_INSTRUCTION = `
 You are LetEX AI, a friendly and highly intelligent Virtual Lab Assistant. 🧪✨
 Your goal is to explain physics, science, and simulation concepts in a fun, engaging way.
@@ -89,11 +116,6 @@ Your goal is to explain physics, science, and simulation concepts in a fun, enga
    \`![Alt Text](https://image.pollinations.ai/prompt/{descriptive_keywords})\`
    Replace {descriptive_keywords} with a clear English description of the image (e.g., 'solar_system_orbit_planets_realistic').
 4. **Brevity**: Keep responses concise but informative. Avoid writing huge walls of text.
-
-### EXAMPLE:
-User: "Explain gravity."
-AI: "Gravity is the **fundamental force** that attracts two bodies with mass! 🌍✨ It's what keeps us grounded on Earth and makes planets orbit the Sun. According to **General Relativity**, it's actually the curvature of **spacetime**! 🌌
-![Gravity Spacetime](https://image.pollinations.ai/prompt/spacetime_curvature_gravity_physics_3d_render)"
 `;
 
 // ------------------------------------------------------------------
@@ -128,20 +150,49 @@ const cleanAndParseJSON = (text: string): GeneratedSimulation => {
 // ------------------------------------------------------------------
 // SIMULATION ENGINE (Google Primary)
 // ------------------------------------------------------------------
-const generateWithGoogle = async (prompt: string): Promise<GeneratedSimulation> => {
-  console.log(`[Primary] Generating via Google GenAI (Gemini 2.5 Flash)...`);
+const generateWithGoogle = async (prompt: string, is3D: boolean = false): Promise<GeneratedSimulation> => {
+  console.log(`[Primary] Generating via Google GenAI (Gemini 2.5 Flash)... 3D: ${is3D}`);
   const ai = new GoogleGenAI({ apiKey: GOOGLE_API_KEY });
   
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash',
-    contents: `Create a simulation for: "${prompt}". Return ONLY valid JSON. No conversational text.`,
+    contents: `Create a ${is3D ? '3D Three.js' : '2D Canvas'} simulation for: "${prompt}". Return ONLY valid JSON.`,
     config: {
-      systemInstruction: SIMULATION_SYSTEM_INSTRUCTION,
+      systemInstruction: is3D ? THREE_D_SYSTEM_INSTRUCTION : SIMULATION_SYSTEM_INSTRUCTION,
     }
   });
 
   const text = response.text;
   if (!text) throw new Error("No response output from Google AI.");
+
+  return cleanAndParseJSON(text);
+};
+
+export const refineSimulationCode = async (currentSimulation: GeneratedSimulation, userPrompt: string): Promise<GeneratedSimulation> => {
+  console.log(`[Refine] Refining simulation...`);
+  const ai = new GoogleGenAI({ apiKey: GOOGLE_API_KEY });
+
+  const context = `
+    CURRENT CODE:
+    ${currentSimulation.code}
+
+    CURRENT CONTROLS:
+    ${JSON.stringify(currentSimulation.controls)}
+
+    USER REQUEST:
+    ${userPrompt}
+  `;
+
+  const response = await ai.models.generateContent({
+    model: 'gemini-2.5-flash',
+    contents: context,
+    config: {
+      systemInstruction: REFINE_SYSTEM_INSTRUCTION
+    }
+  });
+
+  const text = response.text;
+  if (!text) throw new Error("No response from AI Refiner.");
 
   return cleanAndParseJSON(text);
 };
@@ -169,62 +220,14 @@ export const generateChatResponse = async (history: ChatMessage[], newMessage: s
 };
 
 // ------------------------------------------------------------------
-// FALLBACK ENGINE (Bytez)
-// ------------------------------------------------------------------
-const generateWithBytez = async (prompt: string): Promise<GeneratedSimulation> => {
-  console.log(`[Fallback] Generating via Bytez SDK...`);
-  
-  let sdk;
-  try {
-    sdk = new Bytez(BYTEZ_API_KEY);
-  } catch (e) {
-    throw new Error("Bytez SDK failed to initialize.");
-  }
-
-  const model = sdk.model("google/gemini-2.5-flash");
-
-  const messages = [
-    { "role": "system", "content": SIMULATION_SYSTEM_INSTRUCTION },
-    { "role": "user", "content": `Create a simulation for: "${prompt}". Return ONLY valid JSON.` }
-  ];
-
-  const { error, output } = await model.run(messages);
-
-  if (error) {
-    throw new Error("Bytez API Error: " + JSON.stringify(error));
-  }
-  
-  if (!output) {
-    throw new Error("No output from Bytez.");
-  }
-
-  let rawText = '';
-  if (typeof output === 'object' && output !== null && 'content' in output) {
-    rawText = (output as any).content;
-  } else if (typeof output === 'string') {
-    rawText = output;
-  } else {
-    rawText = JSON.stringify(output);
-  }
-
-  return cleanAndParseJSON(rawText);
-};
-
-// ------------------------------------------------------------------
 // MAIN EXPORT
 // ------------------------------------------------------------------
-export const generateSimulationCode = async (prompt: string): Promise<GeneratedSimulation> => {
+export const generateSimulationCode = async (prompt: string, is3D: boolean = false): Promise<GeneratedSimulation> => {
   try {
-    return await generateWithGoogle(prompt);
+    return await generateWithGoogle(prompt, is3D);
   } catch (googleError) {
-    console.warn("Primary AI Engine failed. Switching to Fallback...", googleError);
-    try {
-      return await generateWithBytez(prompt);
-    } catch (bytezError) {
-      console.error("Fallback AI Engine failed.", bytezError);
-      throw new Error(
-        "Simulation generation failed on both primary and fallback engines. Please try again later."
-      );
-    }
+    console.error("Google AI Error:", googleError);
+    // Fallback logic could go here if needed, but keeping it simple for now
+    throw new Error("Simulation generation failed. Please try again.");
   }
 };

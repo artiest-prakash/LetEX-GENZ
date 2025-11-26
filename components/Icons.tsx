@@ -22,7 +22,11 @@ import {
   Save,
   MessageSquare, // Chat Icon
   Send, // Send Icon
-  Bot // Bot Icon
+  Bot, // Bot Icon
+  Box, // 3D Icon
+  Users, // Community Icon
+  Pencil, // Edit Icon
+  Globe // World Icon
 } from 'lucide-react';
 
 // Custom SVG Logo: 3D Tau (Torque) Symbol
@@ -104,5 +108,9 @@ export const Icons = {
   Save,
   MessageSquare,
   Send,
-  Bot
+  Bot,
+  Box,
+  Users,
+  Pencil,
+  Globe
 };

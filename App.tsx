@@ -9,7 +9,9 @@ import { TermsPage } from './components/TermsPage';
 import { ChatBot } from './components/ChatBot';
 import { BetaPopup } from './components/BetaPopup';
 import { Icons } from './components/Icons';
-import { GenerationStatus, GeneratedSimulation, HistoryItem } from './types';
+import { ThreeDDashboard } from './components/ThreeDDashboard';
+import { CommunityPage } from './components/CommunityPage';
+import { GenerationStatus, GeneratedSimulation, HistoryItem, Page } from './types';
 
 const SUGGESTIONS = [
   "A double pendulum chaotic physics simulation",
@@ -18,8 +20,6 @@ const SUGGESTIONS = [
   "A projectile motion lab with wind resistance",
   "A wave interference simulator"
 ];
-
-type Page = 'home' | 'about' | 'terms';
 
 const App: React.FC = () => {
   // Navigation State
@@ -98,9 +98,7 @@ const App: React.FC = () => {
     setCurrentPage('home');
 
     try {
-      const data = await generateSimulationCode(prompt);
-      // We don't set 'simulation' yet. We set 'pendingSimulation' so LoadingState can use the title.
-      // The status remains GENERATING until the animation completes.
+      const data = await generateSimulationCode(prompt, false);
       setPendingSimulation(data);
     } catch (err) {
       console.error("Generation Error:", err);
@@ -116,8 +114,9 @@ const App: React.FC = () => {
     }
   };
 
-  const handleManualSave = async () => {
-    if (!simulation) return;
+  const handleManualSave = async (simToSave?: GeneratedSimulation) => {
+    const targetSim = simToSave || simulation;
+    if (!targetSim) return;
 
     if (!user) {
       handleLogin();
@@ -128,9 +127,9 @@ const App: React.FC = () => {
     
     const { error: saveError } = await supabase.from('simulations').insert({
       user_id: user.id,
-      title: simulation.title,
-      prompt: prompt,
-      simulation_data: simulation
+      title: targetSim.title,
+      prompt: prompt || targetSim.title, // Fallback if prompt was cleared
+      simulation_data: targetSim
     });
 
     if (saveError) {
@@ -162,7 +161,7 @@ const App: React.FC = () => {
     setStatus(GenerationStatus.IDLE);
     setPrompt('');
     setSaveStatus(null);
-    setCurrentPage('home');
+    // Don't reset current page unless explicitly needed
   };
 
   const getGreeting = () => {
@@ -196,42 +195,44 @@ const App: React.FC = () => {
             <span className="text-2xl font-bold tracking-tight text-slate-800 font-brand brand-font">LetEX</span>
           </div>
 
-          <div className="hidden md:flex items-center gap-6 ml-4">
+          <div className="hidden md:flex items-center gap-2 ml-4 bg-white/50 backdrop-blur-sm p-1 rounded-full border border-slate-200/50">
             <button 
-              onClick={() => setCurrentPage('home')}
-              className={`text-sm font-medium transition-colors ${currentPage === 'home' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'}`}
+              onClick={() => { setCurrentPage('home'); resetSimulation(); }}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${currentPage === 'home' ? 'bg-white text-blue-600 shadow-sm border border-slate-100' : 'text-slate-500 hover:text-slate-800'}`}
             >
-              Lab
+              2D Lab
             </button>
             <button 
-              onClick={() => setCurrentPage('about')}
-              className={`text-sm font-medium transition-colors ${currentPage === 'about' ? 'text-blue-600' : 'text-slate-500 hover:text-slate-800'}`}
+              onClick={() => { setCurrentPage('3d'); resetSimulation(); }}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${currentPage === '3d' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
             >
-              About
+              3D Lab
             </button>
-            {/* LetEX AI Button */}
             <button 
+              onClick={() => { setCurrentPage('community'); resetSimulation(); }}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${currentPage === 'community' ? 'bg-white text-purple-600 shadow-sm border border-slate-100' : 'text-slate-500 hover:text-slate-800'}`}
+            >
+              Community
+            </button>
+          </div>
+        </div>
+        
+        {/* Auth / Profile & LetEX AI Button */}
+        <div className="flex items-center gap-4">
+           {/* LetEX AI Button */}
+           <button 
               onClick={() => setIsChatOpen(!isChatOpen)}
               className={`
-                flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold transition-all border
+                hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold transition-all border
                 ${isChatOpen 
                   ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-500/30' 
                   : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-600'}
               `}
             >
               <Icons.Sparkles className={`w-3.5 h-3.5 ${isChatOpen ? 'text-yellow-300' : 'text-blue-500'}`} />
-              LetEX AI
+              Assistant
             </button>
-          </div>
-        </div>
-        
-        {/* Auth / Profile */}
-        <div className="flex items-center gap-4">
-          <div className="hidden md:flex items-center gap-2 px-3 py-1 rounded-full bg-white/50 border border-slate-100 text-xs text-slate-400">
-            <div className={`w-1.5 h-1.5 rounded-full ${status === GenerationStatus.GENERATING ? 'bg-blue-500 animate-ping' : 'bg-green-500 animate-pulse'}`} />
-            {status === GenerationStatus.GENERATING ? 'Processing' : 'System Online'}
-          </div>
-          
+
           {user ? (
              <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
                 <div className="flex items-center gap-2">
@@ -272,6 +273,18 @@ const App: React.FC = () => {
         {currentPage === 'about' && <AboutPage onBack={() => setCurrentPage('home')} />}
         {currentPage === 'terms' && <TermsPage onBack={() => setCurrentPage('home')} />}
         
+        {currentPage === '3d' && (
+          <ThreeDDashboard 
+             user={user} 
+             onSave={(sim) => handleManualSave(sim)} 
+             saveStatus={saveStatus}
+          />
+        )}
+
+        {currentPage === 'community' && (
+           <CommunityPage onLoadSimulation={loadFromHistory} />
+        )}
+        
         {currentPage === 'home' && (
           <>
             {/* Hero Section */}
@@ -289,7 +302,7 @@ const App: React.FC = () => {
                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Ready to Discover?</span>
                     </>
                   ) : (
-                    <>Welcome To <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Reality</span></>
+                    <>Welcome To <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">LetEX</span></>
                   )}
                 </h1>
                 
@@ -420,7 +433,7 @@ const App: React.FC = () => {
                  <SimulationViewer 
                     simulation={simulation}
                     onClose={resetSimulation}
-                    onSave={handleManualSave}
+                    onSave={() => handleManualSave()}
                     saveStatus={saveStatus}
                  />
               )}

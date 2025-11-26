@@ -2,6 +2,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Icons } from './Icons';
 import { GeneratedSimulation, SimulationControl } from '../types';
+import { refineSimulationCode } from '../services/geminiService';
 
 interface SimulationViewerProps {
   simulation: GeneratedSimulation;
@@ -10,9 +11,14 @@ interface SimulationViewerProps {
   saveStatus: 'saving' | 'saved' | 'error' | null;
 }
 
-export const SimulationViewer: React.FC<SimulationViewerProps> = ({ simulation, onClose, onSave, saveStatus }) => {
+export const SimulationViewer: React.FC<SimulationViewerProps> = ({ simulation: initialSimulation, onClose, onSave, saveStatus }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  
+  // Simulation State (Can be updated by Refine)
+  const [simulation, setSimulation] = useState<GeneratedSimulation>(initialSimulation);
+  
+  // Control States
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [controlValues, setControlValues] = useState<Record<string, any>>({});
   
@@ -21,7 +27,13 @@ export const SimulationViewer: React.FC<SimulationViewerProps> = ({ simulation, 
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPlaying, setIsPlaying] = useState(true);
 
-  // Initialize control values
+  // Edit / Refine State
+  const [isEditing, setIsEditing] = useState(false);
+  const [editPrompt, setEditPrompt] = useState('');
+  const [isRefining, setIsRefining] = useState(false);
+  const [changesCommitted, setChangesCommitted] = useState(false);
+
+  // Initialize control values when simulation changes
   useEffect(() => {
     const initialValues: Record<string, any> = {};
     simulation.controls.forEach(c => {
@@ -30,6 +42,9 @@ export const SimulationViewer: React.FC<SimulationViewerProps> = ({ simulation, 
       }
     });
     setControlValues(initialValues);
+    // Reset view on new simulation code
+    setZoom(1);
+    setPan({ x: 0, y: 0 });
   }, [simulation]);
 
   const sendMessage = (id: string, value: any) => {
@@ -63,27 +78,38 @@ export const SimulationViewer: React.FC<SimulationViewerProps> = ({ simulation, 
     }
   };
 
-  // Zoom Logic (Inverse Scaling for Field of View)
+  // Zoom & Pan
   const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.1, 3.0));
   const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.1, 0.2));
-  const handleResetView = () => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-  };
+  const handleResetView = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
+  const handlePan = (dx: number, dy: number) => { setPan(prev => ({ x: prev.x + dx, y: prev.y + dy })); };
 
-  // Pan Logic
-  const handlePan = (dx: number, dy: number) => {
-    setPan(prev => ({ x: prev.x + dx, y: prev.y + dy }));
-  };
-
-  // Listen for fullscreen change events
   useEffect(() => {
-    const onFullscreenChange = () => {
-        setIsFullscreen(!!document.fullscreenElement);
-    };
+    const onFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
     document.addEventListener('fullscreenchange', onFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
+
+  // Handle Refinement
+  const handleRefineSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editPrompt.trim()) return;
+
+    setIsRefining(true);
+    try {
+      const refinedSim = await refineSimulationCode(simulation, editPrompt);
+      setSimulation(refinedSim);
+      setChangesCommitted(true);
+      setTimeout(() => setChangesCommitted(false), 3000); // Hide badge after 3s
+      setIsEditing(false);
+      setEditPrompt('');
+    } catch (error) {
+      console.error("Refinement failed:", error);
+      alert("Failed to apply changes. Please try again.");
+    } finally {
+      setIsRefining(false);
+    }
+  };
 
   return (
     <div className="w-full max-w-6xl mx-auto pb-20 animate-in slide-in-from-bottom-10 duration-700">
@@ -95,6 +121,18 @@ export const SimulationViewer: React.FC<SimulationViewerProps> = ({ simulation, 
           <p className="text-slate-500 mt-2 text-lg max-w-3xl">{simulation.description}</p>
         </div>
         <div className="flex items-center gap-3">
+            {/* Edit Button */}
+            <button
+              onClick={() => setIsEditing(!isEditing)}
+              className={`
+                 flex items-center gap-2 px-4 py-2 rounded-full font-semibold transition-all shadow-sm border
+                 ${isEditing ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'}
+              `}
+            >
+               <Icons.Pencil className="w-4 h-4" />
+               {isEditing ? 'Close Editor' : 'Edit Sim'}
+            </button>
+
             <button
                 onClick={onSave}
                 disabled={saveStatus === 'saving' || saveStatus === 'saved'}
@@ -112,7 +150,7 @@ export const SimulationViewer: React.FC<SimulationViewerProps> = ({ simulation, 
                 ) : (
                     <Icons.Save className="w-4 h-4" />
                 )}
-                {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : 'Save Simulation'}
+                {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : 'Save'}
             </button>
             <button 
               onClick={onClose}
@@ -123,21 +161,62 @@ export const SimulationViewer: React.FC<SimulationViewerProps> = ({ simulation, 
         </div>
       </div>
 
-      {/* INSTRUCTIONS */}
-      <div className="mb-6 bg-white border border-blue-100 rounded-xl p-5 shadow-sm flex items-start gap-4">
-        <div className="bg-blue-600 text-white p-2 rounded-lg shrink-0 shadow-lg shadow-blue-500/30">
-          <Icons.Sparkles className="w-5 h-5" />
+      {/* CHANGES COMMITTED POPUP */}
+      {changesCommitted && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[100] animate-in slide-in-from-top-4 fade-in">
+          <div className="bg-green-600 text-white px-6 py-2 rounded-full shadow-lg flex items-center gap-2 font-semibold">
+            <Icons.Check className="w-4 h-4" />
+            Changes Committed Successfully
+          </div>
         </div>
-        <div>
-          <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-1">How it works</h4>
-          <p className="text-slate-600 leading-relaxed text-[15px]">
-            {simulation.instructions}
-          </p>
-        </div>
-      </div>
+      )}
 
       {/* SIMULATION CONTAINER */}
       <div className="bg-white p-1 rounded-2xl border border-slate-200 shadow-2xl mb-8 relative group">
+        
+        {/* SHIMMER EFFECT OVERLAY */}
+        {isRefining && (
+          <div className="absolute inset-0 z-50 rounded-xl overflow-hidden pointer-events-none">
+            <div className="absolute inset-0 bg-white/50 backdrop-blur-sm" />
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/80 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
+            <div className="absolute inset-0 flex items-center justify-center">
+               <div className="bg-white px-6 py-3 rounded-full shadow-xl flex items-center gap-3">
+                 <Icons.Sparkles className="w-5 h-5 text-blue-600 animate-spin" />
+                 <span className="font-semibold text-slate-700">Refining Simulation...</span>
+               </div>
+            </div>
+          </div>
+        )}
+
+        {/* EDIT OVERLAY */}
+        {isEditing && !isRefining && (
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl z-40 animate-in slide-in-from-bottom-4 fade-in">
+             <form 
+               onSubmit={handleRefineSubmit}
+               className="bg-white/90 backdrop-blur-md p-2 rounded-2xl border border-blue-200 shadow-2xl flex items-center gap-2"
+             >
+                <div className="bg-blue-100 p-3 rounded-xl text-blue-600">
+                  <Icons.Bot className="w-6 h-6" />
+                </div>
+                <input 
+                  type="text" 
+                  value={editPrompt}
+                  onChange={(e) => setEditPrompt(e.target.value)}
+                  placeholder="Tell LetEX what to change (e.g. 'Make the balls larger', 'Add wind force')..."
+                  className="flex-1 bg-transparent border-none focus:ring-0 text-slate-800 placeholder-slate-400 font-medium h-12"
+                  autoFocus
+                />
+                <button 
+                  type="submit"
+                  disabled={!editPrompt.trim()}
+                  className="p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Icons.ArrowRight className="w-5 h-5" />
+                </button>
+             </form>
+          </div>
+        )}
+
         <div 
           ref={containerRef}
           className={`
@@ -158,34 +237,23 @@ export const SimulationViewer: React.FC<SimulationViewerProps> = ({ simulation, 
             }}
             sandbox="allow-scripts allow-same-origin"
           />
-          
-          {/* Viewport Indicator */}
-          <div className="absolute top-4 right-4 bg-slate-900/80 text-white text-xs px-3 py-1.5 rounded-full backdrop-blur-md z-10 font-mono shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-             Zoom: {Math.round(zoom * 100)}% | Pan: {Math.round(pan.x)},{Math.round(pan.y)}
+        </div>
+
+        {/* PLAYBACK & NAV BAR (Below Card - Only if not editing) */}
+        {!isEditing && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-white/90 backdrop-blur-md border border-slate-200 p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
+             <button onClick={togglePlayback} className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isPlaying ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30'}`}>
+               {isPlaying ? <Icons.Pause className="w-4 h-4" /> : <Icons.Play className="w-4 h-4 ml-0.5" />}
+             </button>
+             <div className="w-px h-6 bg-slate-200"></div>
+             <div className="flex items-center gap-1">
+               <button onClick={() => handlePan(40, 0)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500"><Icons.ArrowRight className="w-4 h-4 rotate-180"/></button>
+               <button onClick={() => handlePan(-40, 0)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500"><Icons.ArrowRight className="w-4 h-4"/></button>
+               <button onClick={() => handlePan(0, 40)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500"><Icons.ArrowRight className="w-4 h-4 -rotate-90"/></button>
+               <button onClick={() => handlePan(0, -40)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500"><Icons.ArrowRight className="w-4 h-4 rotate-90"/></button>
+             </div>
           </div>
-        </div>
-
-        {/* PLAYBACK & NAV BAR (Below Card) */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-white/90 backdrop-blur-md border border-slate-200 p-2 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
-           
-           <button
-             onClick={togglePlayback}
-             className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isPlaying ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/30'}`}
-             title={isPlaying ? "Pause Simulation" : "Resume Simulation"}
-           >
-             {isPlaying ? <Icons.Pause className="w-4 h-4" /> : <Icons.Play className="w-4 h-4 ml-0.5" />}
-           </button>
-
-           <div className="w-px h-6 bg-slate-200"></div>
-           
-           {/* Pan Controls */}
-           <div className="flex items-center gap-1">
-             <button onClick={() => handlePan(40, 0)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500" title="Pan Left"><Icons.ArrowRight className="w-4 h-4 rotate-180"/></button>
-             <button onClick={() => handlePan(-40, 0)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500" title="Pan Right"><Icons.ArrowRight className="w-4 h-4"/></button>
-             <button onClick={() => handlePan(0, 40)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500" title="Pan Up"><Icons.ArrowRight className="w-4 h-4 -rotate-90"/></button>
-             <button onClick={() => handlePan(0, -40)} className="p-2 hover:bg-slate-100 rounded-full text-slate-500" title="Pan Down"><Icons.ArrowRight className="w-4 h-4 rotate-90"/></button>
-           </div>
-        </div>
+        )}
       </div>
 
       {/* CONTROL BAR */}
@@ -198,7 +266,6 @@ export const SimulationViewer: React.FC<SimulationViewerProps> = ({ simulation, 
               <Icons.Cpu className="w-4 h-4" />
               Simulation Parameters
             </div>
-            {/* Status Indicator */}
              <div className={`px-3 py-1 rounded-full text-xs font-bold ${isPlaying ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
                 {isPlaying ? 'ACTIVE' : 'PAUSED'}
              </div>
@@ -207,7 +274,6 @@ export const SimulationViewer: React.FC<SimulationViewerProps> = ({ simulation, 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
             {simulation.controls.map((control) => (
               <div key={control.id} className="flex flex-col gap-2">
-                
                 {control.type === 'slider' && (
                   <>
                     <div className="flex justify-between items-center text-sm">
@@ -227,29 +293,19 @@ export const SimulationViewer: React.FC<SimulationViewerProps> = ({ simulation, 
                     />
                   </>
                 )}
-
                 {control.type === 'button' && (
-                  <button
-                    onClick={() => handleButtonClick(control.id)}
-                    className="mt-6 w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-all active:scale-95 flex items-center justify-center gap-2"
-                  >
-                    <Icons.Refresh className="w-4 h-4" />
-                    {control.label}
+                  <button onClick={() => handleButtonClick(control.id)} className="mt-6 w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg transition-all flex items-center justify-center gap-2">
+                    <Icons.Refresh className="w-4 h-4" /> {control.label}
                   </button>
                 )}
-
                 {control.type === 'toggle' && (
                    <div className="flex items-center justify-between mt-4 p-3 bg-slate-50 rounded-lg border border-slate-100">
                       <span className="font-semibold text-slate-700 text-sm">{control.label}</span>
-                      <button
-                        onClick={() => handleControlChange(control.id, !controlValues[control.id])}
-                        className={`w-12 h-6 rounded-full transition-colors relative ${controlValues[control.id] ? 'bg-blue-600' : 'bg-slate-300'}`}
-                      >
+                      <button onClick={() => handleControlChange(control.id, !controlValues[control.id])} className={`w-12 h-6 rounded-full transition-colors relative ${controlValues[control.id] ? 'bg-blue-600' : 'bg-slate-300'}`}>
                          <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${controlValues[control.id] ? 'translate-x-6' : 'translate-x-0'}`} />
                       </button>
                    </div>
                 )}
-
               </div>
             ))}
           </div>
@@ -271,35 +327,21 @@ export const SimulationViewer: React.FC<SimulationViewerProps> = ({ simulation, 
               </button>
 
               <div className="flex items-center gap-2 w-full bg-slate-800 p-1.5 rounded-xl border border-slate-700">
-                <button 
-                  onClick={handleZoomOut}
-                  className="p-2 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors"
-                  title="Zoom Out"
-                >
-                  <Icons.ZoomOut className="w-4 h-4" />
-                </button>
-                
-                <button 
-                  onClick={handleResetView}
-                  className="flex-1 text-xs font-mono text-slate-400 hover:text-white transition-colors text-center py-2 rounded hover:bg-slate-700/50"
-                  title="Reset View"
-                >
-                  Reset
-                </button>
-                
-                <button 
-                  onClick={handleZoomIn}
-                  className="p-2 hover:bg-slate-700 rounded-lg text-white transition-colors"
-                  title="Zoom In"
-                >
-                  <Icons.ZoomIn className="w-4 h-4" />
-                </button>
+                <button onClick={handleZoomOut} className="p-2 hover:bg-slate-700 rounded-lg text-slate-300 transition-colors"><Icons.ZoomOut className="w-4 h-4" /></button>
+                <button onClick={handleResetView} className="flex-1 text-xs font-mono text-slate-400 hover:text-white transition-colors text-center py-2 rounded hover:bg-slate-700/50">Reset</button>
+                <button onClick={handleZoomIn} className="p-2 hover:bg-slate-700 rounded-lg text-white transition-colors"><Icons.ZoomIn className="w-4 h-4" /></button>
               </div>
            </div>
         </div>
 
       </div>
+      
+      <style>{`
+        @keyframes shimmer {
+          0% { transform: translateX(-100%) skewX(-15deg); }
+          100% { transform: translateX(200%) skewX(-15deg); }
+        }
+      `}</style>
     </div>
   );
 };
-    
