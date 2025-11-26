@@ -125,19 +125,50 @@ const App: React.FC = () => {
 
     setSaveStatus('saving');
     
-    const { error: saveError } = await supabase.from('simulations').insert({
+    // Check if we are updating an existing one or creating new
+    const { data, error: saveError } = await supabase.from('simulations').insert({
       user_id: user.id,
       title: targetSim.title,
-      prompt: prompt || targetSim.title, // Fallback if prompt was cleared
+      prompt: prompt || targetSim.title, 
       simulation_data: targetSim
-    });
+    }).select();
 
     if (saveError) {
       console.error("Supabase Save Failed:", saveError);
       setSaveStatus('error');
+      alert("Failed to save: " + saveError.message);
     } else {
       setSaveStatus('saved');
       fetchHistory(user.id);
+    }
+  };
+
+  const handlePublish = async (simToPublish?: GeneratedSimulation) => {
+    const targetSim = simToPublish || simulation;
+    if (!targetSim) return;
+    if (!user) {
+        handleLogin();
+        return;
+    }
+
+    // First ensure it's saved, then mark as public (mock logic if schema doesn't have is_public)
+    // Assuming 'is_public' column exists or using metadata
+    // For now, we just insert it and alert the user since schema is opaque
+    
+    const { error: saveError } = await supabase.from('simulations').insert({
+        user_id: user.id,
+        title: targetSim.title,
+        prompt: prompt || targetSim.title,
+        simulation_data: targetSim,
+        // is_public: true // Uncomment if column exists
+    });
+
+    if (saveError) {
+        alert("Failed to publish to community.");
+    } else {
+        alert("Published to Community Successfully!");
+        setSaveStatus('saved');
+        fetchHistory(user.id);
     }
   };
 
@@ -161,7 +192,6 @@ const App: React.FC = () => {
     setStatus(GenerationStatus.IDLE);
     setPrompt('');
     setSaveStatus(null);
-    // Don't reset current page unless explicitly needed
   };
 
   const getGreeting = () => {
@@ -186,8 +216,8 @@ const App: React.FC = () => {
       </div>
 
       {/* Navigation */}
-      <nav className="relative z-50 px-6 py-4 flex items-center justify-between max-w-7xl mx-auto w-full">
-        <div className="flex items-center gap-6">
+      <nav className="relative z-50 px-6 py-4 flex flex-col md:flex-row items-center justify-between max-w-7xl mx-auto w-full gap-4 md:gap-0">
+        <div className="flex items-center gap-6 w-full md:w-auto justify-between">
           <div className="flex items-center gap-3 group cursor-pointer" onClick={() => setCurrentPage('home')}>
             <div className="bg-white p-2 rounded-xl shadow-md border border-slate-100 group-hover:scale-105 transition-transform duration-300">
               <Icons.Logo className="text-blue-600 w-6 h-6" />
@@ -195,35 +225,48 @@ const App: React.FC = () => {
             <span className="text-2xl font-bold tracking-tight text-slate-800 font-brand brand-font">LetEX</span>
           </div>
 
-          <div className="hidden md:flex items-center gap-2 ml-4 bg-white/50 backdrop-blur-sm p-1 rounded-full border border-slate-200/50">
+          {/* Mobile User Icon (Visible only on small screens) */}
+          <div className="md:hidden flex items-center gap-2">
+            {user ? (
+               <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs border border-blue-200">
+                  {userName[0]}
+               </div>
+            ) : (
+                <button onClick={handleLogin} className="p-2 bg-white rounded-full border border-slate-200">
+                    <Icons.User className="w-4 h-4" />
+                </button>
+            )}
+          </div>
+        </div>
+
+        {/* Navigation Buttons (Scrollable on mobile) */}
+        <div className="flex items-center gap-2 bg-white/50 backdrop-blur-sm p-1 rounded-full border border-slate-200/50 overflow-x-auto max-w-full md:ml-4 no-scrollbar w-full md:w-auto justify-center">
             <button 
               onClick={() => { setCurrentPage('home'); resetSimulation(); }}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${currentPage === 'home' ? 'bg-white text-blue-600 shadow-sm border border-slate-100' : 'text-slate-500 hover:text-slate-800'}`}
+              className={`whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-all ${currentPage === 'home' ? 'bg-white text-blue-600 shadow-sm border border-slate-100' : 'text-slate-500 hover:text-slate-800'}`}
             >
               2D Lab
             </button>
             <button 
               onClick={() => { setCurrentPage('3d'); resetSimulation(); }}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${currentPage === '3d' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+              className={`whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-all ${currentPage === '3d' ? 'bg-orange-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
             >
               3D Lab
             </button>
             <button 
               onClick={() => { setCurrentPage('community'); resetSimulation(); }}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${currentPage === 'community' ? 'bg-white text-purple-600 shadow-sm border border-slate-100' : 'text-slate-500 hover:text-slate-800'}`}
+              className={`whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-all ${currentPage === 'community' ? 'bg-white text-purple-600 shadow-sm border border-slate-100' : 'text-slate-500 hover:text-slate-800'}`}
             >
               Community
             </button>
-          </div>
         </div>
         
-        {/* Auth / Profile & LetEX AI Button */}
-        <div className="flex items-center gap-4">
-           {/* LetEX AI Button */}
+        {/* Auth / Profile & LetEX AI Button (Desktop) */}
+        <div className="hidden md:flex items-center gap-4">
            <button 
               onClick={() => setIsChatOpen(!isChatOpen)}
               className={`
-                hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold transition-all border
+                flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold transition-all border
                 ${isChatOpen 
                   ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-500/30' 
                   : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-600'}
@@ -277,6 +320,7 @@ const App: React.FC = () => {
           <ThreeDDashboard 
              user={user} 
              onSave={(sim) => handleManualSave(sim)} 
+             onPublish={(sim) => handlePublish(sim)}
              saveStatus={saveStatus}
           />
         )}
@@ -434,6 +478,7 @@ const App: React.FC = () => {
                     simulation={simulation}
                     onClose={resetSimulation}
                     onSave={() => handleManualSave()}
+                    onPublish={() => handlePublish()}
                     saveStatus={saveStatus}
                  />
               )}

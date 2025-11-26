@@ -8,10 +8,11 @@ interface SimulationViewerProps {
   simulation: GeneratedSimulation;
   onClose: () => void;
   onSave: () => void;
+  onPublish?: () => void;
   saveStatus: 'saving' | 'saved' | 'error' | null;
 }
 
-export const SimulationViewer: React.FC<SimulationViewerProps> = ({ simulation: initialSimulation, onClose, onSave, saveStatus }) => {
+export const SimulationViewer: React.FC<SimulationViewerProps> = ({ simulation: initialSimulation, onClose, onSave, onPublish, saveStatus }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   
@@ -98,6 +99,8 @@ export const SimulationViewer: React.FC<SimulationViewerProps> = ({ simulation: 
     setIsRefining(true);
     try {
       const refinedSim = await refineSimulationCode(simulation, editPrompt);
+      if (refinedSim.code.length < 50) throw new Error("Generated code too short");
+
       setSimulation(refinedSim);
       setChangesCommitted(true);
       setTimeout(() => setChangesCommitted(false), 3000); // Hide badge after 3s
@@ -115,29 +118,38 @@ export const SimulationViewer: React.FC<SimulationViewerProps> = ({ simulation: 
     <div className="w-full max-w-6xl mx-auto pb-20 animate-in slide-in-from-bottom-10 duration-700">
       
       {/* HEADER */}
-      <div className="flex items-start justify-between mb-6 px-1">
+      <div className="flex flex-col md:flex-row items-start justify-between mb-6 px-1 gap-4 md:gap-0">
         <div>
           <h2 className="text-4xl font-bold text-slate-900 tracking-tight font-brand">{simulation.title}</h2>
           <p className="text-slate-500 mt-2 text-lg max-w-3xl">{simulation.description}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
             {/* Edit Button */}
             <button
               onClick={() => setIsEditing(!isEditing)}
               className={`
-                 flex items-center gap-2 px-4 py-2 rounded-full font-semibold transition-all shadow-sm border
+                 flex items-center gap-2 px-4 py-2 rounded-full font-semibold transition-all shadow-sm border text-sm
                  ${isEditing ? 'bg-blue-100 text-blue-700 border-blue-200' : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200'}
               `}
             >
                <Icons.Pencil className="w-4 h-4" />
-               {isEditing ? 'Close Editor' : 'Edit Sim'}
+               {isEditing ? 'Close' : 'Edit'}
+            </button>
+
+            {/* Share to Community */}
+             <button
+                onClick={onPublish}
+                className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold transition-all shadow-sm border text-sm bg-white hover:bg-purple-50 text-slate-600 hover:text-purple-600 border-slate-200"
+            >
+                <Icons.Globe className="w-3.5 h-3.5" />
+                <span>Share</span>
             </button>
 
             <button
                 onClick={onSave}
                 disabled={saveStatus === 'saving' || saveStatus === 'saved'}
                 className={`
-                    flex items-center gap-2 px-4 py-2 rounded-full font-semibold transition-all shadow-sm border
+                    flex items-center gap-2 px-4 py-2 rounded-full font-semibold transition-all shadow-sm border text-sm
                     ${saveStatus === 'saved' 
                         ? 'bg-green-50 text-green-700 border-green-200 cursor-default' 
                         : 'bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-blue-300'}
@@ -224,8 +236,9 @@ export const SimulationViewer: React.FC<SimulationViewerProps> = ({ simulation: 
             ${isFullscreen ? 'fixed inset-0 z-[100] rounded-none' : 'aspect-video'}
           `}
         >
-          {/* Iframe with Transform Logic */}
+          {/* Iframe with Transform Logic and unique key to force reload */}
           <iframe
+            key={simulation.code.length}
             ref={iframeRef}
             srcDoc={simulation.code}
             title={simulation.title}

@@ -8,10 +8,11 @@ interface ThreeDSimulationViewerProps {
   simulation: GeneratedSimulation;
   onClose: () => void;
   onSave: () => void;
+  onPublish?: () => void;
   saveStatus: 'saving' | 'saved' | 'error' | null;
 }
 
-export const ThreeDSimulationViewer: React.FC<ThreeDSimulationViewerProps> = ({ simulation: initialSimulation, onClose, onSave, saveStatus }) => {
+export const ThreeDSimulationViewer: React.FC<ThreeDSimulationViewerProps> = ({ simulation: initialSimulation, onClose, onSave, onPublish, saveStatus }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   
@@ -60,6 +61,9 @@ export const ThreeDSimulationViewer: React.FC<ThreeDSimulationViewerProps> = ({ 
     setIsRefining(true);
     try {
       const refinedSim = await refineSimulationCode(simulation, editPrompt);
+      // Validate code before setting
+      if (refinedSim.code.length < 50) throw new Error("Generated code too short");
+      
       setSimulation(refinedSim);
       setChangesCommitted(true);
       setTimeout(() => setChangesCommitted(false), 3000); 
@@ -67,7 +71,7 @@ export const ThreeDSimulationViewer: React.FC<ThreeDSimulationViewerProps> = ({ 
       setEditPrompt('');
     } catch (error) {
       console.error("Refinement failed:", error);
-      alert("Failed to apply changes. Please try again.");
+      alert("Failed to apply changes. Please try again. " + error);
     } finally {
       setIsRefining(false);
     }
@@ -92,8 +96,8 @@ export const ThreeDSimulationViewer: React.FC<ThreeDSimulationViewerProps> = ({ 
   return (
     <div className="w-full h-full flex flex-col animate-in fade-in duration-700">
       
-      {/* HEADER (Light Mode) */}
-      <div className="flex items-start justify-between mb-6 px-1">
+      {/* HEADER (Red/Orange Theme) */}
+      <div className="flex flex-col md:flex-row items-start justify-between mb-6 px-1 gap-4 md:gap-0">
         <div>
           <div className="flex items-center gap-2 mb-1">
              <div className="px-2 py-0.5 bg-orange-100 text-orange-600 rounded text-[10px] font-bold uppercase tracking-wider border border-orange-200">
@@ -103,37 +107,46 @@ export const ThreeDSimulationViewer: React.FC<ThreeDSimulationViewerProps> = ({ 
           </div>
           <p className="text-slate-500 text-sm max-w-2xl">{simulation.description}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
             {/* Edit Button */}
             <button
               onClick={() => setIsEditing(!isEditing)}
               className={`
-                 flex items-center gap-2 px-4 py-2 rounded-full font-semibold transition-all shadow-sm border
+                 flex items-center gap-2 px-4 py-2 rounded-full font-semibold transition-all shadow-sm border text-sm
                  ${isEditing ? 'bg-orange-600 text-white border-orange-600' : 'bg-white hover:bg-orange-50 text-slate-600 border-slate-200'}
               `}
             >
-               <Icons.Pencil className="w-4 h-4" />
-               {isEditing ? 'Close Editor' : 'Edit 3D Model'}
+               <Icons.Pencil className="w-3.5 h-3.5" />
+               {isEditing ? 'Close' : 'Edit'}
+            </button>
+
+            {/* Share to Community */}
+             <button
+                onClick={onPublish}
+                className="flex items-center gap-2 px-4 py-2 rounded-full font-semibold transition-all shadow-sm border text-sm bg-white hover:bg-purple-50 text-slate-600 hover:text-purple-600 border-slate-200"
+            >
+                <Icons.Globe className="w-3.5 h-3.5" />
+                <span>Share</span>
             </button>
 
             <button
                 onClick={onSave}
                 disabled={saveStatus === 'saving' || saveStatus === 'saved'}
                 className={`
-                    flex items-center gap-2 px-4 py-2 rounded-full font-semibold transition-all shadow-sm border
+                    flex items-center gap-2 px-4 py-2 rounded-full font-semibold transition-all shadow-sm border text-sm
                     ${saveStatus === 'saved' 
                         ? 'bg-green-50 text-green-600 border-green-200 cursor-default' 
                         : 'bg-white hover:bg-orange-50 text-slate-600 border-slate-200'}
                 `}
             >
                 {saveStatus === 'saving' ? (
-                    <Icons.Refresh className="w-4 h-4 animate-spin" />
+                    <Icons.Refresh className="w-3.5 h-3.5 animate-spin" />
                 ) : saveStatus === 'saved' ? (
-                    <Icons.Check className="w-4 h-4" />
+                    <Icons.Check className="w-3.5 h-3.5" />
                 ) : (
-                    <Icons.Save className="w-4 h-4" />
+                    <Icons.Save className="w-3.5 h-3.5" />
                 )}
-                {saveStatus === 'saving' ? 'Saving...' : saveStatus === 'saved' ? 'Saved' : 'Save'}
+                {saveStatus === 'saved' ? 'Saved' : 'Save'}
             </button>
             <button 
               onClick={onClose}
@@ -206,8 +219,9 @@ export const ThreeDSimulationViewer: React.FC<ThreeDSimulationViewerProps> = ({ 
           </div>
         )}
 
-        {/* The Iframe */}
+        {/* The Iframe with key to force reload */}
         <iframe
+          key={simulation.code.length}
           ref={iframeRef}
           srcDoc={simulation.code}
           title={simulation.title}
@@ -234,7 +248,7 @@ export const ThreeDSimulationViewer: React.FC<ThreeDSimulationViewerProps> = ({ 
 
       </div>
 
-      {/* CONTROL BAR (Light Mode) */}
+      {/* CONTROL BAR (Red/Orange Theme) */}
       <div className="mt-6 bg-white border border-orange-100 rounded-2xl p-6 shadow-xl">
           <div className="flex items-center gap-2 text-slate-400 uppercase text-xs font-bold tracking-widest mb-6">
               <Icons.Cpu className="w-4 h-4" />

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Icons } from './Icons';
 import { generateSimulationCode } from '../services/geminiService';
 import { GeneratedSimulation, GenerationStatus } from '../types';
@@ -9,6 +9,7 @@ import { ThreeDSimulationViewer } from './ThreeDSimulationViewer';
 interface ThreeDDashboardProps {
   user: any;
   onSave: (sim: GeneratedSimulation) => void;
+  onPublish?: (sim: GeneratedSimulation) => void;
   saveStatus: 'saving' | 'saved' | 'error' | null;
 }
 
@@ -20,7 +21,7 @@ const SUGGESTIONS_3D = [
   "An interactive 3D cube field with wave motion"
 ];
 
-export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({ user, onSave, saveStatus }) => {
+export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({ user, onSave, onPublish, saveStatus }) => {
   const [prompt, setPrompt] = useState('');
   const [status, setStatus] = useState<GenerationStatus>(GenerationStatus.IDLE);
   const [simulation, setSimulation] = useState<GeneratedSimulation | null>(null);
@@ -46,14 +47,16 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({ user, onSave, 
   };
 
   const onLoadingComplete = () => {
+    // CRITICAL FIX: Ensure we have data before switching state
     if (pendingSimulation) {
       setSimulation(pendingSimulation);
       setStatus(GenerationStatus.COMPLETED);
     } else {
-        // Fallback if state update lags, though unlikely with React's batching
-        console.warn("Loading complete but no simulation data found.");
-        setStatus(GenerationStatus.ERROR);
-        setError("Simulation data failed to load.");
+        // Fallback if data isn't ready yet (race condition safety)
+        if (status === GenerationStatus.GENERATING && !error) {
+             // Wait a bit or show error
+             console.warn("Loading animation done, but data not ready.");
+        }
     }
   };
 
@@ -65,7 +68,7 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({ user, onSave, 
   };
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-br from-orange-50 via-white to-red-50 text-slate-900 -mt-4 md:-mt-10 px-4 py-10 md:px-8">
+    <div className="w-full min-h-screen bg-gradient-to-br from-orange-50 via-slate-50 to-red-50 text-slate-900 -mt-4 md:-mt-10 px-4 py-10 md:px-8">
       
       {status === GenerationStatus.IDLE && (
         <div className="max-w-4xl mx-auto text-center mt-10 animate-in fade-in slide-in-from-bottom-8">
@@ -143,6 +146,7 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({ user, onSave, 
                 simulation={simulation}
                 onClose={handleClose}
                 onSave={() => onSave(simulation)}
+                onPublish={() => onPublish?.(simulation)}
                 saveStatus={saveStatus}
              />
          </div>

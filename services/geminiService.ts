@@ -91,10 +91,10 @@ Generate a self-contained HTML file using Three.js (via CDN) to visualize the re
    - **Renderer**: Use \`antialias: true\`, \`alpha: true\`. Enable shadows: \`renderer.shadowMap.enabled = true\`.
    - **Tone Mapping**: Use \`THREE.ACESFilmicToneMapping\`.
 
-2. **Visual Style**:
-   - **Background**: Default to a dark, deep space/slate color (#020617) UNLESS the user prompt specifically implies a light environment (like a lab room). 
-   - **Materials**: Use \`THREE.MeshStandardMaterial\` or \`THREE.MeshPhysicalMaterial\` with high roughness for a premium look, or 'neon' emissive materials for sci-fi looks.
-   - **Colors**: Use **Blue (#3b82f6)**, **Cyan (#06b6d4)**, and **Orange (#f97316)** as primary accent colors.
+2. **Visual Style (RED/ORANGE THEME)**:
+   - **Background**: Default to a dark, deep space/slate color (#020617) UNLESS the user prompt specifically implies a light environment. 
+   - **Materials**: Use \`THREE.MeshStandardMaterial\` or \`THREE.MeshPhysicalMaterial\`.
+   - **Colors**: You MUST use **Orange (#f97316)**, **Red (#ef4444)**, and **Amber (#f59e0b)** as primary object/effect colors. Avoid Blue unless scientifically necessary (like water).
    - **Lighting**: MUST include:
      - \`AmbientLight\` (soft fill).
      - \`DirectionalLight\` (main sun-like light) with \`castShadow = true\`.
@@ -120,14 +120,17 @@ const REFINE_SYSTEM_INSTRUCTION = `
 You are a Senior Code Refactorer for Physics Simulations. 
 Your task is to EDIT existing HTML/JS simulation code based on a User Request.
 
+### RULES
 1. **Analyze**: Look at the provided "CURRENT CODE". Determine if it is 2D (Canvas) or 3D (Three.js).
 2. **Modify**: Apply the user's specific changes (e.g., "Add gravity", "Change color to red", "Make it faster").
-3. **Preserve**: Keep the existing structure, especially the 'message' event listeners and the 'controls' logic. 
-   - If 3D, preserve the OrbitControls, Lighting, and CSS (\`touch-action: none\`).
-   - If 2D, preserve the canvas resize logic.
-4. **Update Controls**: If the user asks for a NEW parameter (e.g., "Add a slider for wind"), ADD it to the "controls" array and implement the logic in the code.
-5. **Output**: Return the FULL updated JSON object with the new "code" and updated "controls".
-6. **Format**: VALID JSON ONLY. No markdown.
+3. **FULL CODE RETURN**: You must return the **ENTIRE** updated HTML source code. Do not return snippets. Do not return "rest of code here". The viewer needs the full file to render.
+4. **Preserve Structure**: 
+   - Keep 'message' event listeners.
+   - Keep 'OrbitControls' (if 3D).
+   - Keep 'resize' listeners.
+5. **Update Controls**: If the user asks for a NEW parameter, ADD it to the "controls" array.
+6. **Output**: Return the FULL updated JSON object with the new "code" and updated "controls".
+7. **Format**: VALID JSON ONLY. No markdown.
 `;
 
 const CHAT_SYSTEM_INSTRUCTION = `
@@ -230,7 +233,6 @@ export const generateChatResponse = async (history: ChatMessage[], newMessage: s
   console.log(`[Chat] Generating response for: ${newMessage}`);
   const ai = new GoogleGenAI({ apiKey: GOOGLE_API_KEY });
   
-  // Format history for context (simplified)
   const context = history.map(msg => `${msg.role === 'user' ? 'User' : 'AI'}: ${msg.content}`).join('\n');
   const fullPrompt = `${context}\nUser: ${newMessage}\nAI:`;
 
@@ -253,7 +255,6 @@ export const generateSimulationCode = async (prompt: string, is3D: boolean = fal
     return await generateWithGoogle(prompt, is3D);
   } catch (googleError) {
     console.error("Google AI Error:", googleError);
-    // Rethrow to allow the UI to catch and display
     throw googleError;
   }
 };
