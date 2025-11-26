@@ -125,7 +125,6 @@ const App: React.FC = () => {
 
     setSaveStatus('saving');
     
-    // Check if we are updating an existing one or creating new
     const { data, error: saveError } = await supabase.from('simulations').insert({
       user_id: user.id,
       title: targetSim.title,
@@ -151,16 +150,11 @@ const App: React.FC = () => {
         return;
     }
 
-    // First ensure it's saved, then mark as public (mock logic if schema doesn't have is_public)
-    // Assuming 'is_public' column exists or using metadata
-    // For now, we just insert it and alert the user since schema is opaque
-    
     const { error: saveError } = await supabase.from('simulations').insert({
         user_id: user.id,
         title: targetSim.title,
         prompt: prompt || targetSim.title,
         simulation_data: targetSim,
-        // is_public: true // Uncomment if column exists
     });
 
     if (saveError) {
@@ -216,7 +210,7 @@ const App: React.FC = () => {
       </div>
 
       {/* Navigation */}
-      <nav className="relative z-50 px-6 py-4 flex flex-col md:flex-row items-center justify-between max-w-7xl mx-auto w-full gap-4 md:gap-0">
+      <nav className="relative z-50 px-4 md:px-6 py-4 flex flex-col md:flex-row items-center justify-between max-w-7xl mx-auto w-full gap-4 md:gap-0">
         <div className="flex items-center gap-6 w-full md:w-auto justify-between">
           <div className="flex items-center gap-3 group cursor-pointer" onClick={() => setCurrentPage('home')}>
             <div className="bg-white p-2 rounded-xl shadow-md border border-slate-100 group-hover:scale-105 transition-transform duration-300">
@@ -225,15 +219,24 @@ const App: React.FC = () => {
             <span className="text-2xl font-bold tracking-tight text-slate-800 font-brand brand-font">LetEX</span>
           </div>
 
-          {/* Mobile User Icon (Visible only on small screens) */}
-          <div className="md:hidden flex items-center gap-2">
+          {/* Mobile User Section - Explicitly Visible */}
+          <div className="md:hidden flex items-center">
             {user ? (
-               <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs border border-blue-200">
-                  {userName[0]}
+               <div className="flex items-center gap-2 bg-white/50 px-2 py-1 rounded-full border border-slate-100">
+                  <div className="w-7 h-7 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xs shadow-sm">
+                     {userName.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-xs font-bold text-slate-700 truncate max-w-[80px]">
+                    {userName.split(' ')[0]}
+                  </span>
                </div>
             ) : (
-                <button onClick={handleLogin} className="p-2 bg-white rounded-full border border-slate-200">
-                    <Icons.User className="w-4 h-4" />
+                <button 
+                  onClick={handleLogin} 
+                  className="flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-slate-50 rounded-full border border-slate-200 shadow-sm transition-all"
+                >
+                    <Icons.Google className="w-3.5 h-3.5" />
+                    <span className="text-xs font-bold text-slate-700">Sign In</span>
                 </button>
             )}
           </div>
@@ -283,10 +286,10 @@ const App: React.FC = () => {
                     <img src={user.user_metadata.avatar_url} alt="Profile" className="w-8 h-8 rounded-full border border-slate-200" />
                   ) : (
                     <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
-                      {userName[0]}
+                      {userName.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  <div className="hidden sm:block text-right">
+                  <div className="text-right">
                     <p className="text-xs font-bold text-slate-700 leading-tight">{userName}</p>
                     <p className="text-[10px] text-slate-400 leading-tight">Pro Member</p>
                   </div>

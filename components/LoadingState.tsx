@@ -37,18 +37,23 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
     return () => { clearTimeout(t1); clearTimeout(t2); };
   }, []);
 
-  // 2. Handle Lyrics Timing (7 seconds per line)
+  // 2. Handle Lyrics Timing (Adaptive Speed)
   useEffect(() => {
     if (introStage !== 'lyrics') return;
 
-    // We stop auto-advancing at the last step until title is ready
+    // If we haven't reached the end...
     if (lyricIndex < lyrics.length - 1) {
+      // If the simulation is ready (title exists), we speed up the remaining lyrics dramatically
+      // otherwise we keep the slow 7s pace.
+      const delay = simulationTitle ? 1200 : 7000;
+      
       const timer = setTimeout(() => {
         setLyricIndex(prev => prev + 1);
-      }, 7000); // 7 seconds per sentence as requested
+      }, delay);
+      
       return () => clearTimeout(timer);
     }
-  }, [introStage, lyricIndex, lyrics.length]);
+  }, [introStage, lyricIndex, lyrics.length, simulationTitle]);
 
   // 3. Handle Final Completion
   useEffect(() => {
@@ -56,7 +61,7 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
     if (lyricIndex === lyrics.length - 1 && simulationTitle) {
       const completeTimer = setTimeout(() => {
         onComplete?.();
-      }, 5000); // Read the final title for 5s then show sim
+      }, 3000); // reduced from 5s to 3s for snappier feel
       return () => clearTimeout(completeTimer);
     }
   }, [lyricIndex, simulationTitle, onComplete, lyrics.length]);
@@ -119,7 +124,7 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
           <div className="absolute bottom-[-80px] w-64 h-2 bg-slate-100 rounded-full overflow-hidden">
              {/* Progress bar fills as lyrics progress */}
              <div 
-               className="h-full bg-gradient-to-r from-blue-600 to-cyan-400 transition-all duration-[7000ms] ease-linear"
+               className="h-full bg-gradient-to-r from-blue-600 to-cyan-400 transition-all duration-[500ms] ease-linear"
                style={{ width: `${((lyricIndex + 1) / lyrics.length) * 100}%` }}
              />
           </div>
