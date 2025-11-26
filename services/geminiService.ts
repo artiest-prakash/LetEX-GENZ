@@ -77,37 +77,62 @@ Generate a self-contained HTML5 Canvas simulation AND a definition of external c
 `;
 
 const THREE_D_SYSTEM_INSTRUCTION = `
-You are LetEX 3D, a master of WebGL and Three.js. You build stunning 3D simulations.
+You are LetEX 3D, a master of WebGL, Three.js, and Scientific Visualization. 
+You build stunning, scientifically accurate 3D simulations that feel like "Google Earth" for physics/chemistry/maths.
 
 ### GOAL
 Generate a self-contained HTML file using Three.js (via CDN) to visualize the requested 3D simulation.
 
-### REQUIREMENTS
-1. **Libraries**: 
+### CRITICAL VISUAL & INTERACTION STANDARDS
+1. **Libraries & Setup**: 
    - Use ES modules in a <script type="module"> block.
-   - Import Three.js: import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
-   - Import OrbitControls: import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+   - Import Three.js: \`import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';\`
+   - Import OrbitControls: \`import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';\`
+   - **Renderer**: Use \`antialias: true\`, \`alpha: true\`. Enable shadows: \`renderer.shadowMap.enabled = true\`.
+   - **Tone Mapping**: Use \`THREE.ACESFilmicToneMapping\` for realistic colors.
 
-2. **Visuals & Interaction**:
-   - Background: Dark (#0f172a or similar space/dark theme).
-   - Use **OrbitControls** initialized on the camera and renderer.domElement. This allows the user to rotate and zoom with touch/mouse interaction.
-   - Enable damping on controls (controls.enableDamping = true) and call controls.update() in the animation loop.
-   - Use appropriate lighting (Ambient + Directional).
+2. **Visual Style (Dark Mode)**:
+   - **Background**: The HTML body background MUST be **Dark Slate (#020617)**. 
+   - **Materials**: Use \`THREE.MeshStandardMaterial\` or \`THREE.MeshPhysicalMaterial\` with high roughness for a premium look, or 'neon' emissive materials for sci-fi looks.
+   - **Colors**: Use **Blue (#3b82f6)** and **Cyan (#06b6d4)** as primary accent colors for objects. Avoid random rainbow colors unless necessary.
+   - **Lighting**: MUST include:
+     - \`AmbientLight\` (soft cool blue fill).
+     - \`DirectionalLight\` (main white/warm light) with \`castShadow = true\`.
 
-3. **Interactivity (Parameters)**:
-   - MUST implement the same window.addEventListener('message') protocol as the 2D simulations for external parameter controls.
-   - Support window resize event to update camera aspect and renderer size.
+3. **Interaction (Full Touch Control)**:
+   - **OrbitControls**: MANDATORY.
+   - **Touch Action**: You MUST add this CSS to the <style> block:
+     \`body { margin: 0; overflow: hidden; background-color: #020617; } canvas { display: block; width: 100vw; height: 100vh; touch-action: none; outline: none; }\`
+     (The \`touch-action: none\` is CRITICAL to allow the user to rotate the model with fingers without scrolling the page).
+   - Configure Controls: 
+     \`controls.enableDamping = true;\`
+     \`controls.dampingFactor = 0.05;\`
+     \`controls.enableZoom = true;\`
+     \`controls.enableRotate = true;\`
+     \`controls.enablePan = true;\`
+     \`controls.rotateSpeed = 0.5;\` (Smoother for touch)
+   - **Loop**: You MUST call \`controls.update()\` inside the \`animate()\` loop.
+   - **Responsive**: Listen to \`resize\` event to update camera aspect and renderer size.
 
-4. **Output**: Return strictly valid JSON with "code" (HTML) and "controls". Same JSON structure as standard simulations.
+4. **External Parameter Control**:
+   - Implement the \`window.addEventListener('message')\` protocol (same as 2D) to update simulation variables (e.g., speed, gravity, count) from external sliders.
+
+5. **Scientific Accuracy**:
+   - If simulating physics, use real math formulas.
+   - If simulating molecules, use correct geometry approximations.
+
+6. **Output**: Return strictly valid JSON with "code" (HTML) and "controls".
 `;
 
 const REFINE_SYSTEM_INSTRUCTION = `
 You are a Senior Code Refactorer for Physics Simulations. 
 Your task is to EDIT existing HTML/JS simulation code based on a User Request.
 
-1. **Analyze**: Look at the provided "CURRENT CODE".
+1. **Analyze**: Look at the provided "CURRENT CODE". Determine if it is 2D (Canvas) or 3D (Three.js).
 2. **Modify**: Apply the user's specific changes (e.g., "Add gravity", "Change color to red", "Make it faster").
-3. **Preserve**: Keep the existing structure, especially the 'message' event listeners and the 'controls' logic. Do NOT break the existing external controls unless the user specifically asks to remove them.
+3. **Preserve**: Keep the existing structure, especially the 'message' event listeners and the 'controls' logic. 
+   - If 3D, preserve the OrbitControls, Lighting, and CSS (\`touch-action: none\`).
+   - If 2D, preserve the canvas resize logic.
 4. **Update Controls**: If the user asks for a NEW parameter (e.g., "Add a slider for wind"), ADD it to the "controls" array and implement the logic in the code.
 5. **Output**: Return the FULL updated JSON object with the new "code" and updated "controls".
 6. **Format**: VALID JSON ONLY. No markdown.
@@ -156,7 +181,7 @@ const cleanAndParseJSON = (text: string): GeneratedSimulation => {
 };
 
 // ------------------------------------------------------------------
-// SIMULATION ENGINE (Google Primary)
+// SIMULATION ENGINE
 // ------------------------------------------------------------------
 const generateWithGoogle = async (prompt: string, is3D: boolean = false): Promise<GeneratedSimulation> => {
   console.log(`[Primary] Generating via Google GenAI (Gemini 2.5 Flash)... 3D: ${is3D}`);
@@ -235,7 +260,6 @@ export const generateSimulationCode = async (prompt: string, is3D: boolean = fal
     return await generateWithGoogle(prompt, is3D);
   } catch (googleError) {
     console.error("Google AI Error:", googleError);
-    // Fallback logic could go here if needed, but keeping it simple for now
     throw new Error("Simulation generation failed. Please try again.");
   }
 };
