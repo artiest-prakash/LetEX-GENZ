@@ -89,39 +89,31 @@ Generate a self-contained HTML file using Three.js (via CDN) to visualize the re
    - Import Three.js: \`import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';\`
    - Import OrbitControls: \`import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';\`
    - **Renderer**: Use \`antialias: true\`, \`alpha: true\`. Enable shadows: \`renderer.shadowMap.enabled = true\`.
-   - **Tone Mapping**: Use \`THREE.ACESFilmicToneMapping\` for realistic colors.
+   - **Tone Mapping**: Use \`THREE.ACESFilmicToneMapping\`.
 
-2. **Visual Style (Dark Mode)**:
-   - **Background**: The HTML body background MUST be **Dark Slate (#020617)**. 
+2. **Visual Style**:
+   - **Background**: Default to a dark, deep space/slate color (#020617) UNLESS the user prompt specifically implies a light environment (like a lab room). 
    - **Materials**: Use \`THREE.MeshStandardMaterial\` or \`THREE.MeshPhysicalMaterial\` with high roughness for a premium look, or 'neon' emissive materials for sci-fi looks.
-   - **Colors**: Use **Blue (#3b82f6)** and **Cyan (#06b6d4)** as primary accent colors for objects. Avoid random rainbow colors unless necessary.
+   - **Colors**: Use **Blue (#3b82f6)**, **Cyan (#06b6d4)**, and **Orange (#f97316)** as primary accent colors.
    - **Lighting**: MUST include:
-     - \`AmbientLight\` (soft cool blue fill).
-     - \`DirectionalLight\` (main white/warm light) with \`castShadow = true\`.
+     - \`AmbientLight\` (soft fill).
+     - \`DirectionalLight\` (main sun-like light) with \`castShadow = true\`.
 
 3. **Interaction (Full Touch Control)**:
    - **OrbitControls**: MANDATORY.
    - **Touch Action**: You MUST add this CSS to the <style> block:
      \`body { margin: 0; overflow: hidden; background-color: #020617; } canvas { display: block; width: 100vw; height: 100vh; touch-action: none; outline: none; }\`
-     (The \`touch-action: none\` is CRITICAL to allow the user to rotate the model with fingers without scrolling the page).
+     (The \`touch-action: none\` is CRITICAL).
    - Configure Controls: 
      \`controls.enableDamping = true;\`
      \`controls.dampingFactor = 0.05;\`
-     \`controls.enableZoom = true;\`
-     \`controls.enableRotate = true;\`
-     \`controls.enablePan = true;\`
-     \`controls.rotateSpeed = 0.5;\` (Smoother for touch)
    - **Loop**: You MUST call \`controls.update()\` inside the \`animate()\` loop.
    - **Responsive**: Listen to \`resize\` event to update camera aspect and renderer size.
 
 4. **External Parameter Control**:
-   - Implement the \`window.addEventListener('message')\` protocol (same as 2D) to update simulation variables (e.g., speed, gravity, count) from external sliders.
+   - Implement the \`window.addEventListener('message')\` protocol (same as 2D) to update simulation variables.
 
-5. **Scientific Accuracy**:
-   - If simulating physics, use real math formulas.
-   - If simulating molecules, use correct geometry approximations.
-
-6. **Output**: Return strictly valid JSON with "code" (HTML) and "controls".
+5. **Output**: Return strictly valid JSON with "code" (HTML) and "controls".
 `;
 
 const REFINE_SYSTEM_INSTRUCTION = `
@@ -156,6 +148,7 @@ Your goal is to explain physics, science, and simulation concepts in a fun, enga
 // ------------------------------------------------------------------
 
 const cleanAndParseJSON = (text: string): GeneratedSimulation => {
+  // Robust cleanup to handle markdown blocks
   let jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
 
   const firstBrace = jsonString.indexOf('{');
@@ -169,8 +162,8 @@ const cleanAndParseJSON = (text: string): GeneratedSimulation => {
   try {
       data = JSON.parse(jsonString);
   } catch (e) {
-      console.error("Failed to parse JSON:", jsonString.substring(0, 100) + "...");
-      throw new Error("Received malformed data from AI.");
+      console.error("Failed to parse JSON. Raw text:", jsonString.substring(0, 200) + "...");
+      throw new Error("Received malformed data from AI. Please try again.");
   }
   
   if (!data.code || !data.controls) {
@@ -260,6 +253,7 @@ export const generateSimulationCode = async (prompt: string, is3D: boolean = fal
     return await generateWithGoogle(prompt, is3D);
   } catch (googleError) {
     console.error("Google AI Error:", googleError);
-    throw new Error("Simulation generation failed. Please try again.");
+    // Rethrow to allow the UI to catch and display
+    throw googleError;
   }
 };

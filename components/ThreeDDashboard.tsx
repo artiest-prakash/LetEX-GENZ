@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Icons } from './Icons';
 import { generateSimulationCode } from '../services/geminiService';
 import { GeneratedSimulation, GenerationStatus } from '../types';
@@ -49,6 +49,11 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({ user, onSave, 
     if (pendingSimulation) {
       setSimulation(pendingSimulation);
       setStatus(GenerationStatus.COMPLETED);
+    } else {
+        // Fallback if state update lags, though unlikely with React's batching
+        console.warn("Loading complete but no simulation data found.");
+        setStatus(GenerationStatus.ERROR);
+        setError("Simulation data failed to load.");
     }
   };
 
@@ -60,29 +65,29 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({ user, onSave, 
   };
 
   return (
-    <div className="w-full min-h-screen bg-slate-950 text-white -mt-4 md:-mt-10 px-4 py-10 md:px-8">
+    <div className="w-full min-h-screen bg-gradient-to-br from-orange-50 via-white to-red-50 text-slate-900 -mt-4 md:-mt-10 px-4 py-10 md:px-8">
       
       {status === GenerationStatus.IDLE && (
         <div className="max-w-4xl mx-auto text-center mt-10 animate-in fade-in slide-in-from-bottom-8">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900 border border-slate-700 text-cyan-400 text-xs font-bold uppercase tracking-wider mb-6 shadow-xl shadow-cyan-900/10">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-orange-200 text-orange-600 text-xs font-bold uppercase tracking-wider mb-6 shadow-xl shadow-orange-500/10">
                <Icons.Box className="w-3 h-3" />
                LetEX 3D Engine
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight">
-               Build in <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">Three Dimensions</span>
+            <h1 className="text-5xl md:text-7xl font-bold text-slate-900 mb-6 tracking-tight">
+               Build in <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-600">Three Dimensions</span>
             </h1>
-            <p className="text-lg text-slate-400 max-w-2xl mx-auto mb-12">
+            <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-12">
                Generate immersive WebGL experiences instantly. Visualize molecules, space, or abstract art with accurate lighting and physics.
             </p>
 
-            <div className="bg-slate-900 p-2 rounded-2xl shadow-2xl flex flex-col gap-4 max-w-2xl mx-auto border border-slate-800 ring-1 ring-white/5">
+            <div className="bg-white p-2 rounded-2xl shadow-2xl shadow-orange-500/10 flex flex-col gap-4 max-w-2xl mx-auto border border-orange-100 ring-1 ring-orange-500/5">
                <div className="relative">
                   <textarea
                      value={prompt}
                      onChange={(e) => setPrompt(e.target.value)}
                      placeholder="Describe a 3D scene (e.g. 'A spinning galaxy of particles')"
-                     className="w-full bg-slate-950 hover:bg-slate-900 focus:bg-slate-950 rounded-xl px-5 py-4 pr-32 text-white placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all resize-none h-32 md:h-28 text-lg"
+                     className="w-full bg-slate-50 hover:bg-white focus:bg-white rounded-xl px-5 py-4 pr-32 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all resize-none h-32 md:h-28 text-lg"
                      onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                            e.preventDefault();
@@ -97,8 +102,8 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({ user, onSave, 
                         className={`
                            flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold transition-all duration-300
                            ${!prompt.trim() 
-                              ? 'bg-slate-800 text-slate-600 cursor-not-allowed' 
-                              : 'bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-600/30'}
+                              ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+                              : 'bg-gradient-to-r from-orange-500 to-red-600 text-white hover:shadow-lg hover:shadow-orange-500/30'}
                         `}
                      >
                         <span>Render 3D</span>
@@ -113,7 +118,7 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({ user, onSave, 
                   <button
                      key={i}
                      onClick={() => setPrompt(s)}
-                     className="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-blue-500/50 text-xs text-slate-400 hover:text-blue-300 rounded-lg transition-all shadow-sm"
+                     className="px-4 py-2 bg-white hover:bg-orange-50 border border-slate-200 hover:border-orange-200 text-xs text-slate-500 hover:text-orange-600 rounded-lg transition-all shadow-sm"
                   >
                      {s}
                   </button>
@@ -123,7 +128,7 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({ user, onSave, 
       )}
 
       {status === GenerationStatus.GENERATING && (
-         <div className="text-white">
+         <div className="text-slate-900">
             <LoadingState 
                 simulationTitle={pendingSimulation?.title} 
                 onComplete={onLoadingComplete}
@@ -144,13 +149,13 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({ user, onSave, 
       )}
 
       {status === GenerationStatus.ERROR && (
-          <div className="max-w-xl mx-auto mt-20 p-8 bg-red-900/10 border border-red-500/20 rounded-2xl shadow-lg text-center animate-in fade-in zoom-in">
-             <div className="w-16 h-16 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-500/20">
+          <div className="max-w-xl mx-auto mt-20 p-8 bg-red-50 border border-red-100 rounded-2xl shadow-lg text-center animate-in fade-in zoom-in">
+             <div className="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Icons.X className="w-8 h-8" />
              </div>
-             <h3 className="text-xl font-bold text-red-400 mb-2">3D Render Failed</h3>
-             <p className="text-red-300/80 mb-6">{error}</p>
-             <button onClick={handleClose} className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-500 transition-colors">Dismiss</button>
+             <h3 className="text-xl font-bold text-red-600 mb-2">3D Render Failed</h3>
+             <p className="text-red-800/80 mb-6">{error}</p>
+             <button onClick={handleClose} className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors">Dismiss</button>
           </div>
       )}
 
