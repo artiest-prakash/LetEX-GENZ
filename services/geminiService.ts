@@ -1,3 +1,4 @@
+
 import { GoogleGenAI } from "@google/genai";
 // @ts-ignore
 import Bytez from "bytez.js";
@@ -38,13 +39,30 @@ Generate a self-contained HTML5 Canvas simulation AND a definition of external c
        // ... match the IDs in your controls list
      };
 
+     let isPaused = false;
+
      window.addEventListener('message', (event) => {
        const { id, value } = event.data;
+       
+       if (id === 'set_paused') {
+         isPaused = value;
+         return;
+       }
+
        if (simulationParams.hasOwnProperty(id)) {
           simulationParams[id] = value;
           if (id === 'reset') { /* reset logic */ }
        }
      });
+
+     function animate() {
+        if (!isPaused) {
+           update(); // Update physics only if not paused
+        }
+        draw(); // Always draw
+        requestAnimationFrame(animate);
+     }
+     requestAnimationFrame(animate);
      \`\`\`
 
 3. **Output Format**:
@@ -181,3 +199,4 @@ export const generateSimulationCode = async (prompt: string): Promise<GeneratedS
     }
   }
 };
+    

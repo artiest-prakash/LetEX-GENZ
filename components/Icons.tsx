@@ -1,6 +1,8 @@
+
 import React from 'react';
 import { 
   Play, 
+  Pause,
   Cpu, 
   Sparkles, 
   ArrowRight, 
@@ -16,7 +18,8 @@ import {
   LogOut,
   History,
   User,
-  Calendar
+  Calendar,
+  Save // Added Save icon
 } from 'lucide-react';
 
 // Custom SVG Logo: 3D Tau (Torque) Symbol
@@ -77,6 +80,7 @@ export const Icons = {
   Logo: LetexLogo,
   Google: GoogleIcon,
   Play,
+  Pause,
   Cpu,
   Sparkles,
   ArrowRight,
@@ -86,11 +90,13 @@ export const Icons = {
   Code: Code2,
   Lab: FlaskConical,
   Close: X,
+  X,
   ZoomIn,
   ZoomOut,
   Check,
   LogOut,
   History,
   User,
-  Calendar
+  Calendar,
+  Save
 };
