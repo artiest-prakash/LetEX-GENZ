@@ -8,7 +8,6 @@ import { GeneratedSimulation, ChatMessage } from "../types";
 // CONFIGURATION
 // ------------------------------------------------------------------
 const GOOGLE_API_KEY = process.env.API_KEY || "AIzaSyA3Soixg6FGUNl_ES7nnCMH6rbGIRtvmhk";
-const BYTEZ_API_KEY = "e6b8a35abc212f3d60a7672c8d8e2e9f";
 
 // ------------------------------------------------------------------
 // SYSTEM INSTRUCTIONS
@@ -84,14 +83,21 @@ You are LetEX 3D, a master of WebGL and Three.js. You build stunning 3D simulati
 Generate a self-contained HTML file using Three.js (via CDN) to visualize the requested 3D simulation.
 
 ### REQUIREMENTS
-1. **Libraries**: Use <script type="importmap"> to import three from "https://unpkg.com/three@0.160.0/build/three.module.js" and controls if needed.
-2. **Visuals**:
-   - Use soft lighting, shadows, and clean materials.
-   - Background: Dark Hex (#0f172a) or Space theme.
-   - High performance.
-3. **Interactivity**:
-   - MUST implement the same window.addEventListener('message') protocol as the 2D simulations for external controls.
-   - Support window resize.
+1. **Libraries**: 
+   - Use ES modules in a <script type="module"> block.
+   - Import Three.js: import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';
+   - Import OrbitControls: import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+2. **Visuals & Interaction**:
+   - Background: Dark (#0f172a or similar space/dark theme).
+   - Use **OrbitControls** initialized on the camera and renderer.domElement. This allows the user to rotate and zoom with touch/mouse interaction.
+   - Enable damping on controls (controls.enableDamping = true) and call controls.update() in the animation loop.
+   - Use appropriate lighting (Ambient + Directional).
+
+3. **Interactivity (Parameters)**:
+   - MUST implement the same window.addEventListener('message') protocol as the 2D simulations for external parameter controls.
+   - Support window resize event to update camera aspect and renderer size.
+
 4. **Output**: Return strictly valid JSON with "code" (HTML) and "controls". Same JSON structure as standard simulations.
 `;
 
@@ -99,10 +105,12 @@ const REFINE_SYSTEM_INSTRUCTION = `
 You are a Senior Code Refactorer for Physics Simulations. 
 Your task is to EDIT existing HTML/JS simulation code based on a User Request.
 
-1. Keep the existing structure and 'message' event listeners.
-2. Apply the user's changes (e.g., "Add gravity", "Change color to red", "Make it faster").
-3. Return the FULL updated JSON object with the new "code" and updated "controls" if the request requires new sliders.
-4. Output ONLY valid JSON.
+1. **Analyze**: Look at the provided "CURRENT CODE".
+2. **Modify**: Apply the user's specific changes (e.g., "Add gravity", "Change color to red", "Make it faster").
+3. **Preserve**: Keep the existing structure, especially the 'message' event listeners and the 'controls' logic. Do NOT break the existing external controls unless the user specifically asks to remove them.
+4. **Update Controls**: If the user asks for a NEW parameter (e.g., "Add a slider for wind"), ADD it to the "controls" array and implement the logic in the code.
+5. **Output**: Return the FULL updated JSON object with the new "code" and updated "controls".
+6. **Format**: VALID JSON ONLY. No markdown.
 `;
 
 const CHAT_SYSTEM_INSTRUCTION = `
