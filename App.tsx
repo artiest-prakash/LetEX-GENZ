@@ -7,6 +7,7 @@ import { LoadingState } from './components/LoadingState';
 import { AboutPage } from './components/AboutPage';
 import { TermsPage } from './components/TermsPage';
 import { ChatBot } from './components/ChatBot';
+import { BetaPopup } from './components/BetaPopup';
 import { Icons } from './components/Icons';
 import { GenerationStatus, GeneratedSimulation, HistoryItem } from './types';
 
@@ -176,6 +177,9 @@ const App: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col relative overflow-x-hidden selection:bg-blue-100 selection:text-blue-900 bg-[#f8fafc]">
       
+      {/* Beta Testing Popup */}
+      <BetaPopup />
+
       {/* Ambient Background */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-100/40 rounded-full blur-[120px]" />
