@@ -5,7 +5,6 @@ import { GeneratedSimulation, ChatMessage } from "../types";
 // ------------------------------------------------------------------
 // CONFIGURATION
 // ------------------------------------------------------------------
-// Robust API Key retrieval that works in both Node.js and Browser environments
 const getApiKey = () => {
   if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
     return process.env.API_KEY;
@@ -46,36 +45,40 @@ const SIMULATION_SCHEMA: Schema = {
 };
 
 // ------------------------------------------------------------------
-// SYSTEM INSTRUCTIONS
+// SYSTEM INSTRUCTIONS (STRICTLY 2D)
 // ------------------------------------------------------------------
 const SIMULATION_SYSTEM_INSTRUCTION = `
-You are LetEX, a world-class Simulation Architect. You build physically accurate, aesthetically minimal, web-based simulations.
+You are LetEX, an expert Physics Simulation Engine using HTML5 Canvas (2D Context).
 
 ### GOAL
-Generate a self-contained HTML5 Canvas simulation and external controls.
+Generate a self-contained HTML5 Canvas simulation code string.
 
-### REQUIREMENTS
-1. **Visual Style**: Minimalist, high contrast, clean. Background: #f8fafc.
-2. **Interactivity**:
-   - Use the provided controls array to define external UI.
-   - In your HTML/JS, listen for 'message' events to update parameters.
-   - Do NOT put UI overlays inside the canvas.
-3. **Code Structure**:
-   - Must be a valid HTML file with <canvas> and <script>.
+### STRICT RULES
+1. **2D ONLY**: Use 'canvas.getContext("2d")'. DO NOT use Three.js, WebGL, or any 3D libraries.
+2. **Visual Style**: Minimalist, scientific, high contrast. Background: #f8fafc (Slate 50). Objects: Blue/Cyan gradients.
+3. **Architecture**:
+   - Return a full HTML string with <canvas> and <script>.
    - Must handle window resize.
-   - Must implement an animation loop.
-   - **CRITICAL**: NEVER declare 'const' without initialization (e.g. 'const x;' is invalid). Use 'let'.
+   - Must implement an animation loop using requestAnimationFrame.
+   - Listen for 'message' events to update parameters from the external UI controls.
+4. **Syntax**:
+   - NEVER declare 'const' without initialization (e.g. 'const x;' is invalid). Use 'let'.
+   - Ensure the code handles errors gracefully.
+
+### INTERACTION
+- The simulation must respond to the controls defined in the 'controls' array.
+- In the JS, use: window.addEventListener('message', (event) => { if(event.data.id === '...'){ ... } });
 `;
 
 const REFINE_SYSTEM_INSTRUCTION = `
 You are a Senior Code Refactorer.
-Update the existing HTML/JS simulation code based on the User Request.
+Update the existing HTML5 Canvas (2D) simulation code based on the User Request.
 Return the FULL updated code and controls list in valid JSON format matching the schema.
 
 ### CRITICAL RULES
 1. Do not introduce syntax errors.
-2. NEVER declare 'const' without initialization (e.g. 'const x;' is invalid). Use 'let' instead.
-3. Preserve the existing import maps and visual style.
+2. NEVER declare 'const' without initialization.
+3. Keep it 2D Canvas. Do not switch to 3D.
 `;
 
 const CHAT_SYSTEM_INSTRUCTION = `
@@ -98,7 +101,7 @@ const cleanAndParseJSON = (text: string): GeneratedSimulation => {
       jsonString = jsonString.replace(/```/g, '').trim();
   }
 
-  // Heuristic to find JSON object if there's surrounding text
+  // Heuristic to find JSON object
   const firstBrace = jsonString.indexOf('{');
   const lastBrace = jsonString.lastIndexOf('}');
   
@@ -115,7 +118,6 @@ const cleanAndParseJSON = (text: string): GeneratedSimulation => {
   }
   
   if (!data.code || !data.controls) {
-      // Fallback: If title exists but code missing, throw specific error
       throw new Error("Incomplete simulation data generated.");
   }
 
@@ -125,20 +127,20 @@ const cleanAndParseJSON = (text: string): GeneratedSimulation => {
 // ------------------------------------------------------------------
 // SIMULATION ENGINE
 // ------------------------------------------------------------------
-export const generateWithGoogle = async (prompt: string, is3D: boolean = false): Promise<GeneratedSimulation> => {
-  console.log(`[Primary] Generating via Google GenAI... 3D: ${is3D}`);
+export const generateWithGoogle = async (prompt: string): Promise<GeneratedSimulation> => {
+  console.log(`[Primary] Generating 2D Simulation via Google GenAI...`);
   const ai = new GoogleGenAI({ apiKey: GOOGLE_API_KEY });
   
   const config: any = {
       systemInstruction: SIMULATION_SYSTEM_INSTRUCTION,
-      maxOutputTokens: 8192, // Set to 8192 (Flash safe limit) to prevent cut-off
+      maxOutputTokens: 8192,
       responseMimeType: "application/json",
       responseSchema: SIMULATION_SCHEMA
   };
 
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash',
-    contents: `Create a ${is3D ? '3D Three.js' : '2D Canvas'} simulation for: "${prompt}".`,
+    contents: `Create a 2D Canvas physics simulation for: "${prompt}".`,
     config: config
   });
 
@@ -184,7 +186,6 @@ export const refineSimulationCode = async (currentSimulation: GeneratedSimulatio
 // CHAT ENGINE
 // ------------------------------------------------------------------
 export const generateChatResponse = async (history: ChatMessage[], newMessage: string): Promise<string> => {
-  console.log(`[Chat] Generating response for: ${newMessage}`);
   const ai = new GoogleGenAI({ apiKey: GOOGLE_API_KEY });
   
   const context = history.map(msg => `${msg.role === 'user' ? 'User' : 'AI'}: ${msg.content}`).join('\n');
@@ -205,8 +206,12 @@ export const generateChatResponse = async (history: ChatMessage[], newMessage: s
 // MAIN EXPORT
 // ------------------------------------------------------------------
 export const generateSimulationCode = async (prompt: string, is3D: boolean = false): Promise<GeneratedSimulation> => {
+  // If 3D is requested, this function shouldn't be called, but as a fallback/guard:
+  if (is3D) {
+      throw new Error("Use generateWithSambaNova for 3D requests.");
+  }
   try {
-    return await generateWithGoogle(prompt, is3D);
+    return await generateWithGoogle(prompt);
   } catch (googleError) {
     console.error("Google AI Error:", googleError);
     throw googleError;

@@ -95,6 +95,7 @@ const App: React.FC = () => {
         fetchUserProfile(session.user.id);
         fetchHistory(session.user.id);
         checkPendingGeneration(session.user);
+        setupRealtimeSubscription(session.user.id);
       }
     });
 
@@ -104,6 +105,7 @@ const App: React.FC = () => {
         fetchUserProfile(session.user.id);
         fetchHistory(session.user.id);
         checkPendingGeneration(session.user);
+        setupRealtimeSubscription(session.user.id);
       } else {
         setHistory([]);
         setUserProfile(null);
@@ -112,6 +114,28 @@ const App: React.FC = () => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // --- REALTIME UPDATE SUBSCRIPTION ---
+  const setupRealtimeSubscription = (userId: string) => {
+    const channel = supabase
+      .channel('profile-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${userId}`,
+        },
+        (payload) => {
+          console.log("Realtime profile update:", payload.new);
+          setUserProfile(payload.new as UserProfile);
+        }
+      )
+      .subscribe();
+      
+    return () => { supabase.removeChannel(channel); };
+  };
 
   const fetchUserProfile = async (userId: string) => {
     let { data, error } = await supabase
@@ -224,6 +248,7 @@ const App: React.FC = () => {
     setCurrentPage('home');
 
     try {
+      // Force 2D Generation
       const data = await generateSimulationCode(promptToUse, false);
       setPendingSimulation(data);
       
@@ -386,8 +411,16 @@ const App: React.FC = () => {
           <div className="md:hidden flex items-center">
             {user ? (
                <div className="flex items-center gap-2 bg-white/50 px-2 py-1 rounded-full border border-slate-100">
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-sm ${userProfile?.is_pro ? 'ring-2 ring-yellow-400 bg-slate-800' : 'bg-blue-600'}`}>
+                  <div className={`
+                    w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-sm relative
+                    ${userProfile?.is_pro ? 'ring-2 ring-yellow-400 bg-slate-900' : 'bg-blue-600'}
+                  `}>
                      {userName.charAt(0).toUpperCase()}
+                     {userProfile?.is_pro && (
+                        <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white rounded-full p-[2px] border border-white">
+                          <Icons.Check className="w-2 h-2" />
+                        </div>
+                     )}
                   </div>
                   <span className="text-xs font-bold text-slate-700 truncate max-w-[80px]">
                     {userProfile?.credits ?? 0} Credits
@@ -460,7 +493,10 @@ const App: React.FC = () => {
           {user ? (
              <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
                 <div className="flex items-center gap-2">
-                  <div className={`relative w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-sm cursor-pointer border border-white ${userProfile?.is_pro ? 'ring-2 ring-yellow-400 ring-offset-1 bg-slate-900' : 'bg-blue-100 text-blue-600'}`}>
+                  <div className={`
+                    relative w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-sm cursor-pointer border border-white
+                    ${userProfile?.is_pro ? 'ring-2 ring-yellow-400 ring-offset-1 bg-slate-900' : 'bg-blue-100 text-blue-600'}
+                  `}>
                     {user.user_metadata?.avatar_url ? (
                         <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full rounded-full" />
                     ) : (
@@ -469,8 +505,8 @@ const App: React.FC = () => {
                     
                     {/* PRO BADGE - BLUE TICK */}
                     {userProfile?.is_pro && (
-                        <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white rounded-full p-0.5 border-2 border-white" title="Pro Member">
-                            <Icons.Check className="w-2.5 h-2.5" />
+                        <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white rounded-full p-[3px] border-2 border-white shadow-sm" title="Verified Pro">
+                            <Icons.Check className="w-2 h-2 stroke-[3]" />
                         </div>
                     )}
                   </div>

@@ -54,6 +54,26 @@ export const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => 
     setActionLoading(null);
   };
 
+  const handleTogglePro = async (user: UserProfile) => {
+    const isBecomingPro = !user.is_pro;
+    const currentCredits = user.credits || 0;
+    
+    // Logic: If becoming Pro, add 1000 credits. If removing Pro, leave credits as is (or remove, but usually we keep them).
+    // As per user request: "Promember :- 1000 credits + 15free credits / month"
+    // We will add 1000 credits as a "Welcome Pro" bonus.
+    
+    const updates: Partial<UserProfile> = {
+        is_pro: isBecomingPro
+    };
+
+    if (isBecomingPro) {
+        updates.credits = currentCredits + 1000;
+        alert(`Upgrading ${user.full_name} to Pro and adding 1000 credits.`);
+    }
+
+    await handleUpdateUser(user.id, updates);
+  };
+
   const handleGiftCredits = async (userId: string, currentCredits: number) => {
     const amountStr = prompt("Enter amount of credits to gift:", "100");
     if (!amountStr) return;
@@ -167,7 +187,7 @@ export const AdminDashboard: React.FC<{ onBack: () => void }> = ({ onBack }) => 
                       
                       <td className="px-6 py-4">
                         <button 
-                          onClick={() => handleUpdateUser(user.id, { is_pro: !user.is_pro })}
+                          onClick={() => handleTogglePro(user)}
                           className={`
                             px-3 py-1 rounded-full text-xs font-bold border transition-all
                             ${user.is_pro 
