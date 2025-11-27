@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { Icons } from './Icons';
-import { generateSimulationCode } from '../services/geminiService';
+import { generateWithSambaNova } from '../services/sambaNovaService';
 import { GeneratedSimulation, GenerationStatus } from '../types';
 import { LoadingState } from './LoadingState';
 import { ThreeDSimulationViewer } from './ThreeDSimulationViewer';
@@ -36,8 +36,8 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({ user, onSave, 
     setPendingSimulation(null);
 
     try {
-      // Pass 'true' for is3D
-      const data = await generateSimulationCode(prompt, true);
+      // Use SambaNova Service for 3D Generation
+      const data = await generateWithSambaNova(prompt);
       setPendingSimulation(data);
     } catch (err) {
       console.error("3D Generation Error:", err);
@@ -54,7 +54,6 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({ user, onSave, 
     } else {
         // Fallback if data isn't ready yet (race condition safety)
         if (status === GenerationStatus.GENERATING && !error) {
-             // Wait a bit or show error
              console.warn("Loading animation done, but data not ready.");
         }
     }
@@ -74,14 +73,14 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({ user, onSave, 
         <div className="max-w-4xl mx-auto text-center mt-10 animate-in fade-in slide-in-from-bottom-8">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-orange-200 text-orange-600 text-xs font-bold uppercase tracking-wider mb-6 shadow-xl shadow-orange-500/10">
                <Icons.Box className="w-3 h-3" />
-               LetEX 3D Engine
+               Powered by SambaNova
             </div>
 
             <h1 className="text-5xl md:text-7xl font-bold text-slate-900 mb-6 tracking-tight">
                Build in <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-600">Three Dimensions</span>
             </h1>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-12">
-               Generate immersive WebGL experiences instantly. Visualize molecules, space, or abstract art with accurate lighting and physics.
+               Generate immersive WebGL experiences instantly using Llama 3.3 70B. Visualize molecules, space, or abstract art with accurate lighting and physics.
             </p>
 
             <div className="bg-white p-2 rounded-2xl shadow-2xl shadow-orange-500/10 flex flex-col gap-4 max-w-2xl mx-auto border border-orange-100 ring-1 ring-orange-500/5">

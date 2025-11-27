@@ -1,13 +1,49 @@
 
-import { GoogleGenAI } from "@google/genai";
-// @ts-ignore
-import Bytez from "bytez.js";
+import { GoogleGenAI, Schema, Type } from "@google/genai";
 import { GeneratedSimulation, ChatMessage } from "../types";
 
 // ------------------------------------------------------------------
 // CONFIGURATION
 // ------------------------------------------------------------------
-const GOOGLE_API_KEY = process.env.API_KEY || "AIzaSyA3Soixg6FGUNl_ES7nnCMH6rbGIRtvmhk";
+// Robust API Key retrieval that works in both Node.js and Browser environments
+const getApiKey = () => {
+  if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
+    return process.env.API_KEY;
+  }
+  return "AIzaSyA3Soixg6FGUNl_ES7nnCMH6rbGIRtvmhk";
+};
+
+const GOOGLE_API_KEY = getApiKey();
+
+// ------------------------------------------------------------------
+// SCHEMA DEFINITIONS
+// ------------------------------------------------------------------
+const SIMULATION_SCHEMA: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    title: { type: Type.STRING, description: "Title of the simulation" },
+    description: { type: Type.STRING, description: "Short description of what the simulation demonstrates" },
+    instructions: { type: Type.STRING, description: "User instructions for interaction" },
+    code: { type: Type.STRING, description: "The complete HTML5/JS source code" },
+    controls: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          id: { type: Type.STRING },
+          type: { type: Type.STRING, enum: ['slider', 'button', 'toggle'] },
+          label: { type: Type.STRING },
+          defaultValue: { type: Type.NUMBER, description: "Default numeric value (0 or 1 for toggle)" },
+          min: { type: Type.NUMBER },
+          max: { type: Type.NUMBER },
+          step: { type: Type.NUMBER },
+        },
+        required: ["id", "type", "label", "defaultValue"]
+      }
+    }
+  },
+  required: ["title", "description", "code", "controls"]
+};
 
 // ------------------------------------------------------------------
 // SYSTEM INSTRUCTIONS
@@ -16,134 +52,36 @@ const SIMULATION_SYSTEM_INSTRUCTION = `
 You are LetEX, a world-class Simulation Architect. You build physically accurate, aesthetically minimal, web-based simulations.
 
 ### GOAL
-Generate a self-contained HTML5 Canvas simulation AND a definition of external controls (sliders, buttons) that manipulate it.
+Generate a self-contained HTML5 Canvas simulation and external controls.
 
-### CRITICAL REQUIREMENTS
-1. **Visual Style**: 
-   - MINIMALIST & CLEAN. 
-   - Background: White (#ffffff) or very light grey (#f8fafc).
-   - Objects: High contrast, flat design or subtle gradients. Blue/Cyan theme preferred.
-   - NO text overlays inside the canvas unless they are labels attached to objects. Use the external UI for data.
-   - **Responsive**: The canvas should resize to fit the window or container.
-
-2. **Interactivity Protocol (External Controls)**:
-   - The user will NOT click inside the canvas to change parameters.
-   - The user will use EXTERNAL sliders/buttons provided in the 'controls' JSON field.
-   - **YOUR HTML CODE MUST LISTEN FOR MESSAGES**:
-     Include this exact logic in your <script>:
-     \`\`\`javascript
-     // Initialize default parameters
-     let simulationParams = {
-       // ... match the IDs in your controls list
-     };
-
-     let isPaused = false;
-
-     window.addEventListener('message', (event) => {
-       const { id, value } = event.data;
-       
-       if (id === 'set_paused') {
-         isPaused = value;
-         return;
-       }
-
-       if (simulationParams.hasOwnProperty(id)) {
-          simulationParams[id] = value;
-          if (id === 'reset') { /* reset logic */ }
-       }
-     });
-
-     function animate() {
-        if (!isPaused) {
-           update(); // Update physics only if not paused
-        }
-        draw(); // Always draw
-        requestAnimationFrame(animate);
-     }
-     requestAnimationFrame(animate);
-     \`\`\`
-
-3. **Output Format**:
-   - You MUST return a single, valid JSON object.
-   - DO NOT wrap the JSON in markdown code blocks. Just return the raw JSON string.
-   - Structure:
-     {
-       "title": "String",
-       "description": "String",
-       "instructions": "String",
-       "code": "String (The FULL HTML5 source code)",
-       "controls": [ { "id": "String", "type": "slider" | "button" | "toggle", "label": "String", "min": Number, "max": Number, "defaultValue": Number, "step": Number } ]
-     }
-`;
-
-const THREE_D_SYSTEM_INSTRUCTION = `
-You are LetEX 3D, a master of WebGL, Three.js, and Scientific Visualization. 
-You build stunning, scientifically accurate 3D simulations that feel like "Google Earth" for physics/chemistry/maths.
-
-### GOAL
-Generate a self-contained HTML file using Three.js (via CDN) to visualize the requested 3D simulation.
-
-### CRITICAL VISUAL & INTERACTION STANDARDS
-1. **Libraries & Setup**: 
-   - Use ES modules in a <script type="module"> block.
-   - Import Three.js: \`import * as THREE from 'https://unpkg.com/three@0.160.0/build/three.module.js';\`
-   - Import OrbitControls: \`import { OrbitControls } from 'https://unpkg.com/three@0.160.0/examples/jsm/controls/OrbitControls.js';\`
-   - **Renderer**: Use \`antialias: true\`, \`alpha: true\`. Enable shadows: \`renderer.shadowMap.enabled = true\`.
-   - **Tone Mapping**: Use \`THREE.ACESFilmicToneMapping\`.
-
-2. **Visual Style (RED/ORANGE THEME)**:
-   - **Background**: Default to a dark, deep space/slate color (#020617) UNLESS the user prompt specifically implies a light environment. 
-   - **Materials**: Use \`THREE.MeshStandardMaterial\` or \`THREE.MeshPhysicalMaterial\`.
-   - **Colors**: You MUST use **Orange (#f97316)**, **Red (#ef4444)**, and **Amber (#f59e0b)** as primary object/effect colors. Avoid Blue unless scientifically necessary (like water).
-   - **Lighting**: MUST include:
-     - \`AmbientLight\` (soft fill).
-     - \`DirectionalLight\` (main sun-like light) with \`castShadow = true\`.
-
-3. **Interaction (Full Touch Control)**:
-   - **OrbitControls**: MANDATORY.
-   - **Touch Action**: You MUST add this CSS to the <style> block:
-     \`body { margin: 0; overflow: hidden; background-color: #020617; } canvas { display: block; width: 100vw; height: 100vh; touch-action: none; outline: none; }\`
-     (The \`touch-action: none\` is CRITICAL).
-   - Configure Controls: 
-     \`controls.enableDamping = true;\`
-     \`controls.dampingFactor = 0.05;\`
-   - **Loop**: You MUST call \`controls.update()\` inside the \`animate()\` loop.
-   - **Responsive**: Listen to \`resize\` event to update camera aspect and renderer size.
-
-4. **External Parameter Control**:
-   - Implement the \`window.addEventListener('message')\` protocol (same as 2D) to update simulation variables.
-
-5. **Output**: Return strictly valid JSON with "code" (HTML) and "controls".
+### REQUIREMENTS
+1. **Visual Style**: Minimalist, high contrast, clean. Background: #f8fafc.
+2. **Interactivity**:
+   - Use the provided controls array to define external UI.
+   - In your HTML/JS, listen for 'message' events to update parameters.
+   - Do NOT put UI overlays inside the canvas.
+3. **Code Structure**:
+   - Must be a valid HTML file with <canvas> and <script>.
+   - Must handle window resize.
+   - Must implement an animation loop.
+   - **CRITICAL**: NEVER declare 'const' without initialization (e.g. 'const x;' is invalid). Use 'let'.
 `;
 
 const REFINE_SYSTEM_INSTRUCTION = `
-You are a Senior Code Refactorer for Physics Simulations. 
-Your task is to EDIT existing HTML/JS simulation code based on a User Request.
+You are a Senior Code Refactorer.
+Update the existing HTML/JS simulation code based on the User Request.
+Return the FULL updated code and controls list in valid JSON format matching the schema.
 
-### RULES
-1. **Analyze**: Look at the provided "CURRENT CODE". Determine if it is 2D (Canvas) or 3D (Three.js).
-2. **Modify**: Apply the user's specific changes (e.g., "Add gravity", "Change color to red", "Make it faster").
-3. **FULL CODE RETURN**: You must return the **ENTIRE** updated HTML source code. Do not return snippets. Do not return "rest of code here". The viewer needs the full file to render.
-4. **Preserve Structure**: 
-   - Keep 'message' event listeners.
-   - Keep 'OrbitControls' (if 3D).
-   - Keep 'resize' listeners.
-5. **Update Controls**: If the user asks for a NEW parameter, ADD it to the "controls" array.
-6. **Output**: Return the FULL updated JSON object with the new "code" and updated "controls".
-7. **Format**: VALID JSON ONLY. No markdown.
+### CRITICAL RULES
+1. Do not introduce syntax errors.
+2. NEVER declare 'const' without initialization (e.g. 'const x;' is invalid). Use 'let' instead.
+3. Preserve the existing import maps and visual style.
 `;
 
 const CHAT_SYSTEM_INSTRUCTION = `
-You are LetEX AI, a friendly and highly intelligent Virtual Lab Assistant. 🧪✨
-Your goal is to explain physics, science, and simulation concepts in a fun, engaging way.
-
-### VISUAL & STYLE RULES:
-1. **Friendly Persona**: Use emojis (🚀, ⚛️, 🔬, ✨) frequently to keep the tone light and futuristic.
-2. **Blue Highlighting**: You MUST wrap key scientific terms, formulas, or important concepts in **double asterisks** (e.g., **Quantum Mechanics**). The UI will render these in a beautiful Blue color.
-3. **Image Generation**: If the user asks for an image or if a visual would help explain a concept, generate a Markdown image using the Pollinations AI URL format: 
-   \`![Alt Text](https://image.pollinations.ai/prompt/{descriptive_keywords})\`
-   Replace {descriptive_keywords} with a clear English description of the image (e.g., 'solar_system_orbit_planets_realistic').
-4. **Brevity**: Keep responses concise but informative. Avoid writing huge walls of text.
+You are LetEX AI, a friendly Virtual Lab Assistant. 
+Explain physics and science concepts with emojis and blue bold text (**Concept**).
+Keep responses concise.
 `;
 
 // ------------------------------------------------------------------
@@ -151,9 +89,16 @@ Your goal is to explain physics, science, and simulation concepts in a fun, enga
 // ------------------------------------------------------------------
 
 const cleanAndParseJSON = (text: string): GeneratedSimulation => {
-  // Robust cleanup to handle markdown blocks
-  let jsonString = text.replace(/```json/g, '').replace(/```/g, '').trim();
+  let jsonString = text;
+  
+  // Cleanup markdown wrappers if present
+  if (jsonString.includes('```json')) {
+      jsonString = jsonString.replace(/```json/g, '').replace(/```/g, '').trim();
+  } else if (jsonString.includes('```')) {
+      jsonString = jsonString.replace(/```/g, '').trim();
+  }
 
+  // Heuristic to find JSON object if there's surrounding text
   const firstBrace = jsonString.indexOf('{');
   const lastBrace = jsonString.lastIndexOf('}');
   
@@ -170,6 +115,7 @@ const cleanAndParseJSON = (text: string): GeneratedSimulation => {
   }
   
   if (!data.code || !data.controls) {
+      // Fallback: If title exists but code missing, throw specific error
       throw new Error("Incomplete simulation data generated.");
   }
 
@@ -179,16 +125,21 @@ const cleanAndParseJSON = (text: string): GeneratedSimulation => {
 // ------------------------------------------------------------------
 // SIMULATION ENGINE
 // ------------------------------------------------------------------
-const generateWithGoogle = async (prompt: string, is3D: boolean = false): Promise<GeneratedSimulation> => {
-  console.log(`[Primary] Generating via Google GenAI (Gemini 2.5 Flash)... 3D: ${is3D}`);
+export const generateWithGoogle = async (prompt: string, is3D: boolean = false): Promise<GeneratedSimulation> => {
+  console.log(`[Primary] Generating via Google GenAI... 3D: ${is3D}`);
   const ai = new GoogleGenAI({ apiKey: GOOGLE_API_KEY });
   
+  const config: any = {
+      systemInstruction: SIMULATION_SYSTEM_INSTRUCTION,
+      maxOutputTokens: 8192, // Set to 8192 (Flash safe limit) to prevent cut-off
+      responseMimeType: "application/json",
+      responseSchema: SIMULATION_SCHEMA
+  };
+
   const response = await ai.models.generateContent({
     model: 'gemini-2.5-flash',
-    contents: `Create a ${is3D ? '3D Three.js' : '2D Canvas'} simulation for: "${prompt}". Return ONLY valid JSON.`,
-    config: {
-      systemInstruction: is3D ? THREE_D_SYSTEM_INSTRUCTION : SIMULATION_SYSTEM_INSTRUCTION,
-    }
+    contents: `Create a ${is3D ? '3D Three.js' : '2D Canvas'} simulation for: "${prompt}".`,
+    config: config
   });
 
   const text = response.text;
@@ -216,7 +167,10 @@ export const refineSimulationCode = async (currentSimulation: GeneratedSimulatio
     model: 'gemini-2.5-flash',
     contents: context,
     config: {
-      systemInstruction: REFINE_SYSTEM_INSTRUCTION
+      systemInstruction: REFINE_SYSTEM_INSTRUCTION,
+      responseMimeType: "application/json",
+      responseSchema: SIMULATION_SCHEMA,
+      maxOutputTokens: 8192
     }
   });
 

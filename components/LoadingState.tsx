@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import { Icons } from './Icons';
 
 interface LoadingStateProps {
   simulationTitle?: string;
@@ -12,127 +13,92 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
   onComplete, 
   userName = "Explorer" 
 }) => {
-  const [introStage, setIntroStage] = useState<'letex' | 'x-only' | 'lyrics'>('letex');
-  const [lyricIndex, setLyricIndex] = useState(0);
+  const [step, setStep] = useState(0);
 
-  // The 8-step Lyrics Sequence
-  const lyrics = [
-    "Let time taken to complete the simulation generating = X",
-    `So, ${userName} Please Be Patient...`,
-    "Let The Time X To Be Completed",
-    "As Simulation Is a Function Of X",
-    "X Is Directly Proportional To The Difficulty OF Simulation",
-    "Yeah! X Is Approaching To Zero",
-    "So Let's Differentiate Your Simulation With Respect To X",
-    `And Finally We Got ${simulationTitle || "..."}`
+  // Technical steps for the generation process
+  const steps = [
+    "Initializing Neural Network...",
+    "Analyzing Physics Parameters...",
+    "Synthesizing 3D Mesh Geometry...",
+    "Compiling WebGL Shaders...",
+    "Configuring Environment Lighting...",
+    "Optimizing Frame Rate...",
+    "Finalizing Simulation..."
   ];
 
-  // 1. Handle Intro Animation (LetEX -> X -> Lyrics)
   useEffect(() => {
-    // Show "LetEX" for 1.5s, then hide "LetE"
-    const t1 = setTimeout(() => setIntroStage('x-only'), 1500);
-    // Move X and start lyrics after another 1.5s
-    const t2 = setTimeout(() => setIntroStage('lyrics'), 3000);
+    // Progress through steps
+    const interval = setInterval(() => {
+      setStep(prev => {
+        if (prev < steps.length - 1) return prev + 1;
+        return prev;
+      });
+    }, 1500); // Update step every 1.5s
 
-    return () => { clearTimeout(t1); clearTimeout(t2); };
+    return () => clearInterval(interval);
   }, []);
 
-  // 2. Handle Lyrics Timing (Adaptive Speed)
   useEffect(() => {
-    if (introStage !== 'lyrics') return;
-
-    // If we haven't reached the end...
-    if (lyricIndex < lyrics.length - 1) {
-      // If the simulation is ready (title exists), we speed up the remaining lyrics dramatically
-      // otherwise we keep the slow 7s pace.
-      const delay = simulationTitle ? 1200 : 7000;
-      
+    // If simulation is ready (we have a title), jump to end and finish
+    if (simulationTitle) {
+      setStep(steps.length - 1);
       const timer = setTimeout(() => {
-        setLyricIndex(prev => prev + 1);
-      }, delay);
-      
+        onComplete?.();
+      }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [introStage, lyricIndex, lyrics.length, simulationTitle]);
-
-  // 3. Handle Final Completion
-  useEffect(() => {
-    // If we are at the last step (index 7) and we have a title
-    if (lyricIndex === lyrics.length - 1 && simulationTitle) {
-      const completeTimer = setTimeout(() => {
-        onComplete?.();
-      }, 3000); // reduced from 5s to 3s for snappier feel
-      return () => clearTimeout(completeTimer);
-    }
-  }, [lyricIndex, simulationTitle, onComplete, lyrics.length]);
+  }, [simulationTitle, onComplete, steps.length]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[500px] w-full font-brand select-none overflow-hidden relative">
+    <div className="flex flex-col items-center justify-center min-h-[500px] w-full font-brand select-none relative">
       
-      {/* INTRO STAGE: LetEX -> X */}
-      {introStage !== 'lyrics' && (
-        <div className="text-6xl md:text-8xl font-bold tracking-tight text-slate-900 flex items-center relative transition-all duration-1000">
-          <div className={`transition-all duration-1000 ease-in-out ${introStage === 'x-only' ? 'opacity-0 -translate-x-10 blur-sm' : 'opacity-100'}`}>
-            LetE
-          </div>
-          <div className={`text-blue-600 transition-all duration-1000 ease-in-out ${introStage === 'x-only' ? 'scale-125 translate-x-12' : ''}`}>
-            X
-          </div>
+      {/* Central Loader */}
+      <div className="relative mb-12">
+        {/* Pulsing Rings */}
+        <div className="absolute inset-0 rounded-full border-4 border-blue-100 animate-ping opacity-20"></div>
+        <div className="absolute inset-[-10px] rounded-full border-2 border-cyan-50 animate-pulse opacity-40"></div>
+        
+        {/* Logo Container */}
+        <div className="w-24 h-24 bg-white rounded-3xl shadow-2xl flex items-center justify-center relative z-10 border border-slate-100">
+          <Icons.Cpu className="w-10 h-10 text-blue-600 animate-spin-slow duration-[3s]" />
+          <div className="absolute -top-2 -right-2 bg-green-400 w-4 h-4 rounded-full border-2 border-white animate-bounce"></div>
         </div>
-      )}
+      </div>
 
-      {/* LYRICS STAGE */}
-      {introStage === 'lyrics' && (
-        <div className="flex flex-col items-center justify-center w-full max-w-4xl px-4 text-center h-[300px] relative">
-          
-          {/* Background Decoration: Giant X */}
-          <div className="absolute right-[10%] top-[-20%] text-[300px] font-bold text-blue-50/50 pointer-events-none animate-pulse">
-            X
-          </div>
-
-          {lyrics.map((line, index) => {
-            // Determine visual state relative to current line
-            const isCurrent = index === lyricIndex;
-            const isPast = index < lyricIndex;
-            const isFuture = index > lyricIndex;
-
-            return (
-              <div 
-                key={index}
-                className={`
-                  absolute w-full px-4 transition-all duration-[2000ms] ease-in-out flex justify-center
-                  ${isCurrent ? 'opacity-100 translate-y-0 scale-100 blur-0 z-10' : ''}
-                  ${isPast ? 'opacity-10 -translate-y-24 scale-90 blur-sm z-0' : ''}
-                  ${isFuture ? 'opacity-0 translate-y-24 scale-90 blur-sm z-0' : ''}
-                `}
-              >
-                <h2 className={`
-                  text-2xl md:text-4xl font-bold leading-relaxed max-w-3xl
-                  ${isCurrent 
-                    ? index === 7 
-                      ? 'text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500 scale-110' // Final Title Style
-                      : 'text-slate-800' 
-                    : 'text-slate-300'}
-                `}>
-                  {line}
-                </h2>
-              </div>
-            );
-          })}
-
-          {/* "X approaching Zero" Indicator */}
-          <div className="absolute bottom-[-80px] w-64 h-2 bg-slate-100 rounded-full overflow-hidden">
-             {/* Progress bar fills as lyrics progress */}
-             <div 
-               className="h-full bg-gradient-to-r from-blue-600 to-cyan-400 transition-all duration-[500ms] ease-linear"
-               style={{ width: `${((lyricIndex + 1) / lyrics.length) * 100}%` }}
-             />
-          </div>
-          <div className="absolute bottom-[-60px] text-xs font-mono text-slate-400">
-            d(Sim)/dX → 0
-          </div>
+      {/* Status Text */}
+      <div className="text-center space-y-2 max-w-md px-4">
+        <h2 className="text-2xl font-bold text-slate-800 animate-pulse">
+           {simulationTitle ? "Simulation Ready" : "Building Environment"}
+        </h2>
+        
+        <div className="h-8 flex items-center justify-center overflow-hidden relative">
+             {steps.map((text, index) => (
+                <div 
+                   key={index}
+                   className={`
+                     absolute transition-all duration-500 font-mono text-sm
+                     ${index === step ? 'opacity-100 translate-y-0 text-blue-600' : 
+                       index < step ? 'opacity-0 -translate-y-4 text-slate-300' : 
+                       'opacity-0 translate-y-4 text-slate-300'}
+                   `}
+                >
+                  > {text}
+                </div>
+             ))}
         </div>
-      )}
+      </div>
+
+      {/* Progress Bar */}
+      <div className="mt-8 w-64 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+        <div 
+           className="h-full bg-gradient-to-r from-blue-500 to-cyan-400 transition-all duration-300 ease-out"
+           style={{ width: `${((step + 1) / steps.length) * 100}%` }}
+        />
+      </div>
+
+      <p className="mt-4 text-xs text-slate-400">
+         Generating for {userName}
+      </p>
 
     </div>
   );
