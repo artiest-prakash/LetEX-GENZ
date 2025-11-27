@@ -1,17 +1,23 @@
 
 import React, { useState } from 'react';
+import { supabase } from '../services/supabaseClient';
 import { Icons } from './Icons';
 import { generateWithSambaNova } from '../services/sambaNovaService';
-import { GeneratedSimulation, GenerationStatus } from '../types';
+import { GeneratedSimulation, GenerationStatus, UserProfile } from '../types';
 import { LoadingState } from './LoadingState';
 import { ThreeDSimulationViewer } from './ThreeDSimulationViewer';
 
 interface ThreeDDashboardProps {
   user: any;
+  userProfile: UserProfile | null;
+  onUpdateCredits: (newCredits: number) => void;
   onSave: (sim: GeneratedSimulation) => void;
   onPublish?: (sim: GeneratedSimulation) => void;
+  onRequireLogin: () => void;
   saveStatus: 'saving' | 'saved' | 'error' | null;
 }
+
+const COST_3D = 4.0;
 
 const SUGGESTIONS_3D = [
   "A rotating 3D solar system with texturized planets",
@@ -21,7 +27,9 @@ const SUGGESTIONS_3D = [
   "An interactive 3D cube field with wave motion"
 ];
 
-export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({ user, onSave, onPublish, saveStatus }) => {
+export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({ 
+    user, userProfile, onUpdateCredits, onSave, onPublish, onRequireLogin, saveStatus 
+}) => {
   const [prompt, setPrompt] = useState('');
   const [status, setStatus] = useState<GenerationStatus>(GenerationStatus.IDLE);
   const [simulation, setSimulation] = useState<GeneratedSimulation | null>(null);
@@ -30,6 +38,25 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({ user, onSave, 
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
+
+    if (!user) {
+        // Save pending intent if needed handled by parent, but for now just popup
+        onRequireLogin();
+        return;
+    }
+
+    // Check Credits
+    if (userProfile) {
+        if (userProfile.credits < COST_3D) {
+            alert(`Insufficient credits! 3D simulations require ${COST_3D} credits.`);
+            return;
+        }
+        if (userProfile.is_banned) {
+            alert("Your account has been restricted.");
+            return;
+        }
+    }
+
     setStatus(GenerationStatus.GENERATING);
     setError(null);
     setSimulation(null);
@@ -39,6 +66,20 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({ user, onSave, 
       // Use SambaNova Service for 3D Generation
       const data = await generateWithSambaNova(prompt);
       setPendingSimulation(data);
+      
+      // Deduct Credits
+      if (user && userProfile) {
+         const newCredits = Math.max(0, userProfile.credits - COST_3D);
+         onUpdateCredits(newCredits); // Update local state immediately
+         
+         const { error } = await supabase
+            .from('profiles')
+            .update({ credits: newCredits })
+            .eq('id', user.id);
+            
+         if (error) console.error("3D Credit deduction failed:", error);
+      }
+
     } catch (err) {
       console.error("3D Generation Error:", err);
       setError(err instanceof Error ? err.message : "An unknown error occurred");
@@ -52,7 +93,6 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({ user, onSave, 
       setSimulation(pendingSimulation);
       setStatus(GenerationStatus.COMPLETED);
     } else {
-        // Fallback if data isn't ready yet (race condition safety)
         if (status === GenerationStatus.GENERATING && !error) {
              console.warn("Loading animation done, but data not ready.");
         }
@@ -97,7 +137,10 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({ user, onSave, 
                         }
                      }}
                   />
-                  <div className="absolute bottom-3 right-3">
+                  <div className="absolute bottom-3 right-3 flex items-center gap-3">
+                     <span className="text-xs text-orange-600/70 font-bold mr-2">
+                        {COST_3D} Credits
+                      </span>
                      <button
                         onClick={handleGenerate}
                         disabled={!prompt.trim()}

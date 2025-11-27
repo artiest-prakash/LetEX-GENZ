@@ -29,6 +29,17 @@ export interface HistoryItem {
   user_id?: string;
 }
 
+export interface UserProfile {
+  id: string;
+  email: string;
+  full_name: string;
+  avatar_url: string;
+  is_pro: boolean;
+  is_banned: boolean;
+  credits: number;
+  created_at: string;
+}
+
 export enum GenerationStatus {
   IDLE = 'IDLE',
   GENERATING = 'GENERATING',
@@ -59,4 +70,4 @@ export interface AIModel {
   color: string;
 }
 
-export type Page = 'home' | 'about' | 'terms' | '3d' | 'community';
+export type Page = 'home' | 'about' | 'terms' | '3d' | 'community' | 'admin';
