@@ -82,7 +82,7 @@ export const LoadingState: React.FC<LoadingStateProps> = ({
                        'opacity-0 translate-y-4 text-slate-300'}
                    `}
                 >
-                  > {text}
+                  &gt; {text}
                 </div>
              ))}
         </div>
