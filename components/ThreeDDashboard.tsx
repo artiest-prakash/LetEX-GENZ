@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { Icons } from './Icons';
-import { generateWithSambaNova } from '../services/sambaNovaService';
+import { generateWithOpenRouter } from '../services/openRouterService'; // UPDATED IMPORT
 import { GeneratedSimulation, GenerationStatus, UserProfile } from '../types';
 import { LoadingState } from './LoadingState';
 import { ThreeDSimulationViewer } from './ThreeDSimulationViewer';
@@ -40,12 +40,10 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({
     if (!prompt.trim()) return;
 
     if (!user) {
-        // Save pending intent if needed handled by parent, but for now just popup
         onRequireLogin();
         return;
     }
 
-    // Check Credits
     if (userProfile) {
         if (userProfile.credits < COST_3D) {
             alert(`Insufficient credits! 3D simulations require ${COST_3D} credits.`);
@@ -63,14 +61,13 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({
     setPendingSimulation(null);
 
     try {
-      // Use SambaNova Service for 3D Generation
-      const data = await generateWithSambaNova(prompt);
+      // Use OpenRouter (Claude) Service
+      const data = await generateWithOpenRouter(prompt);
       setPendingSimulation(data);
       
-      // Deduct Credits
       if (user && userProfile) {
          const newCredits = Math.max(0, userProfile.credits - COST_3D);
-         onUpdateCredits(newCredits); // Update local state immediately
+         onUpdateCredits(newCredits); 
          
          const { error } = await supabase
             .from('profiles')
@@ -88,7 +85,6 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({
   };
 
   const onLoadingComplete = () => {
-    // CRITICAL FIX: Ensure we have data before switching state
     if (pendingSimulation) {
       setSimulation(pendingSimulation);
       setStatus(GenerationStatus.COMPLETED);
@@ -113,14 +109,14 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({
         <div className="max-w-4xl mx-auto text-center mt-10 animate-in fade-in slide-in-from-bottom-8">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-orange-200 text-orange-600 text-xs font-bold uppercase tracking-wider mb-6 shadow-xl shadow-orange-500/10">
                <Icons.Box className="w-3 h-3" />
-               Powered by SambaNova
+               Powered by OpenRouter (Claude)
             </div>
 
             <h1 className="text-5xl md:text-7xl font-bold text-slate-900 mb-6 tracking-tight">
                Build in <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-600">Three Dimensions</span>
             </h1>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-12">
-               Generate immersive WebGL experiences instantly using Llama 3.3 70B. Visualize molecules, space, or abstract art with accurate lighting and physics.
+               Generate immersive WebGL experiences instantly using Claude 3.5. Visualize molecules, space, or abstract art with accurate lighting and physics.
             </p>
 
             <div className="bg-white p-2 rounded-2xl shadow-2xl shadow-orange-500/10 flex flex-col gap-4 max-w-2xl mx-auto border border-orange-100 ring-1 ring-orange-500/5">
