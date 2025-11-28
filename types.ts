@@ -60,7 +60,7 @@ export interface ChatMessage {
 }
 
 // AI Model Types
-export type AIModelId = 'gemini-flash' | 'claude-sonnet' | 'gpt-4o' | 'llama-3';
+export type AIModelId = 'gemini-flash' | 'claude-sonnet' | 'claude-opus-4.5' | 'gpt-4o' | 'llama-3';
 
 export interface AIModel {
   id: AIModelId;

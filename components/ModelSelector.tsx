@@ -5,32 +5,25 @@ import { AIModel, AIModelId } from '../types';
 
 const MODELS: AIModel[] = [
   {
-    id: 'gemini-flash',
-    name: 'Gemini 2.5 Flash',
-    provider: 'Google',
-    description: 'Fastest inference, optimized for low latency simulations.',
-    color: 'bg-blue-500'
+    id: 'claude-opus-4.5',
+    name: 'Claude Opus 4.5',
+    provider: 'Anthropic',
+    description: 'Next-gen reasoning for masterpiece simulations.',
+    color: 'bg-purple-600'
   },
   {
     id: 'claude-sonnet',
     name: 'Claude 3.5 Sonnet',
     provider: 'Anthropic',
-    description: 'High precision code generation, best for complex logic.',
+    description: 'High fidelity and complex logic.',
     color: 'bg-orange-500'
   },
   {
-    id: 'gpt-4o',
-    name: 'GPT-4o',
-    provider: 'OpenAI',
-    description: 'Balanced performance and creativity.',
-    color: 'bg-green-500'
-  },
-  {
-    id: 'llama-3',
-    name: 'Llama 3 70B',
-    provider: 'Meta',
-    description: 'Open source powerful model.',
-    color: 'bg-purple-500'
+    id: 'gemini-flash',
+    name: 'Gemini 2.0 Flash',
+    provider: 'Google',
+    description: 'High speed, good for simple scenes.',
+    color: 'bg-blue-500'
   }
 ];
 
@@ -44,6 +37,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ selectedModel, onS
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Default to first model if selected is invalid
   const currentModel = MODELS.find(m => m.id === selectedModel) || MODELS[0];
 
   useEffect(() => {
@@ -73,9 +67,9 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ selectedModel, onS
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 w-72 bg-white rounded-xl border border-slate-100 shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-xl border border-slate-100 shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
           <div className="p-2 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-            Select Reasoning Engine
+            Select Engine
           </div>
           <div className="p-1">
             {MODELS.map((model) => (
