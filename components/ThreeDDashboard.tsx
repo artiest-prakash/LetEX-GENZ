@@ -22,10 +22,10 @@ const COST_3D = 4.0;
 
 const SUGGESTIONS_3D = [
   "A rotating 3D solar system with texturized planets",
-  "A molecular structure visualization of caffeine",
-  "A flock of boids flying in 3D space",
-  "A 3D terrain mesh generation from noise",
-  "An interactive 3D cube field with wave motion"
+  "A detailed 3D Penguin made of shapes",
+  "A molecular structure of caffeine",
+  "A cyberpunk city street with neon lights",
+  "An interactive 3D particle field"
 ];
 
 export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({ 
@@ -114,7 +114,7 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({
                Build in <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">Three Dimensions</span>
             </h1>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-12">
-               Generate immersive WebGL experiences instantly. Visualize molecules, space, or abstract art with accurate lighting and physics using the world's best AI models.
+               Generate immersive WebGL experiences instantly. Visualize molecules, space, or complex structures using geometric composition.
             </p>
 
             <div className="bg-white p-2 rounded-2xl shadow-2xl shadow-indigo-500/10 flex flex-col gap-4 max-w-2xl mx-auto border border-indigo-50 ring-1 ring-indigo-500/5">
@@ -122,7 +122,7 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({
                   <textarea
                      value={prompt}
                      onChange={(e) => setPrompt(e.target.value)}
-                     placeholder="Describe a 3D scene (e.g. 'A spinning galaxy of particles')"
+                     placeholder="Describe a 3D scene (e.g. 'A futuristic robot arm picking up a cube')"
                      className="w-full bg-slate-50 hover:bg-white focus:bg-white rounded-xl px-5 py-4 pr-32 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all resize-none h-32 md:h-28 text-lg"
                      onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
@@ -203,7 +203,7 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({
                 <Icons.X className="w-8 h-8" />
              </div>
              <h3 className="text-xl font-bold text-red-600 mb-2">3D Render Failed</h3>
-             <p className="text-red-800/80 mb-6">{error}</p>
+             <p className="text-red-800/80 mb-6 text-sm">{error}</p>
              <button onClick={handleClose} className="px-6 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors">Dismiss</button>
           </div>
       )}
