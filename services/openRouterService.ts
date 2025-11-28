@@ -16,30 +16,33 @@ Your task is to generate a JSON object containing a complete, self-contained HTM
 
 ### GOAL: CREATE A VISUAL MASTERPIECE
 You are building a "Virtual Laboratory". It must look premium, scientific, and realistic.
+
 1. **VISUALS**: 
    - **Background**: Use a clean, lab-white/slate environment (#f1f5f9).
    - **Materials**: ALWAYS use \`MeshStandardMaterial\` or \`MeshPhysicalMaterial\`.
    - **Textures**: You MUST use textures for planets, ground, and materials. Do not use plain colors for complex objects.
    - **Glow**: The environment has \`UnrealBloomPass\` enabled. Use \`emissive\` colors (e.g., 0x00ff00) with high intensity to make lasers/energy glow.
-   
-2. **COMPLEX OBJECTS (CRITICAL)**:
-   - If asked for a **Planet** (Earth, Mars), you **MUST** use the textures provided in the \`TEXTURE_LIBRARY\` below.
-   - If asked for a **Complex Organism** (Human, Dog, Robot), do **NOT** try to load an external .obj/.glb file (it will fail). 
-   - **INSTEAD**, use **Geometric Composition**: Build the object using \`THREE.Group\`, \`CylinderGeometry\` (limbs), \`BoxGeometry\` (torso), and \`SphereGeometry\` (joints).
-   - Example: A "Robot" is a Group containing cubes and cylinders.
 
-### TEXTURE LIBRARY (USE THESE URLS)
+2. **COMPLEX OBJECT STRATEGY (PHASE-WISE CONSTRUCTION)**:
+   - If asked for a complex organism (e.g., "Penguin", "Robot", "Dog"):
+   - **Step 1**: Decompose the object into primitives (Head = Sphere, Body = Cylinder/Box, Limbs = Cylinders).
+   - **Step 2**: Create a \`THREE.Group\` to hold the object.
+   - **Step 3**: Create helper functions (e.g., \`function createLimb(x,y,z) { ... }\`) to avoid code repetition.
+   - **Step 4**: Assemble the parts into the Group.
+   - **Step 5**: Animate the parts inside the render loop (e.g., rotate limbs).
+
+### TEXTURE LIBRARY (USE THESE RELIABLE URLS)
 - **Earth**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg
-- **Earth Normal**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_normal_2048.jpg
 - **Moon**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg
 - **Mars**: https://upload.wikimedia.org/wikipedia/commons/0/02/OSIRIS_Mars_true_color.jpg
-- **Sun**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/sprites/snowflake2.png (Use for glow)
+- **Wood**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/hardwood2_diffuse.jpg
+- **Metal**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg (Use as rough metal)
 - **Water**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/water/Water_1_M_Normal.jpg
-- **Concrete**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/hardwood2_diffuse.jpg
-- **Grid**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/uv_grid_opengl.jpg
+- **Brick**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/brick_diffuse.jpg
+- **Grass**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/terrain/grasslight-big.jpg
 
 ### STRICT OUTPUT FORMAT
-You MUST return ONLY valid JSON.
+You MUST return ONLY valid JSON. Do not wrap it in Markdown.
 {
   "title": "Simulation Title",
   "description": "Brief description",
@@ -47,11 +50,11 @@ You MUST return ONLY valid JSON.
   "code": "... full html code ...",
   "controls": [ 
       { "id": "speed", "type": "slider", "label": "Speed", "defaultValue": 1, "min": 0, "max": 5, "step": 0.1 },
-      { "id": "glow", "type": "toggle", "label": "Toggle Bloom", "defaultValue": 1 }
+      { "id": "scale", "type": "slider", "label": "Scale", "defaultValue": 1, "min": 0.5, "max": 2, "step": 0.1 }
   ]
 }
 
-### VIRTUAL STUDIO ARCHITECTURE (MANDATORY HTML STRUCTURE)
+### VIRTUAL STUDIO ARCHITECTURE (MANDATORY HTML SKELETON)
 The 'code' field MUST use the following Robust Skeleton.
 
 <!DOCTYPE html>
@@ -74,7 +77,6 @@ The 'code' field MUST use the following Robust Skeleton.
         #status-dot { width: 8px; height: 8px; background: #3b82f6; border-radius: 50%; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
     </style>
-    <!-- STRICT IMPORT MAP -->
     <script type="importmap">
     {
         "imports": {
@@ -88,7 +90,7 @@ The 'code' field MUST use the following Robust Skeleton.
     <div id="ui-layer">
         <div id="status-pill">
             <div id="status-dot"></div>
-            <span id="status-text">Synthesizing Lab...</span>
+            <span id="status-text">Building Simulation...</span>
         </div>
     </div>
 
@@ -103,13 +105,12 @@ The 'code' field MUST use the following Robust Skeleton.
         let scene, camera, renderer, controls, composer;
         const clock = new THREE.Clock();
         
-        // [AI: DECLARE YOUR GLOBAL VARIABLES HERE USING 'let']
+        // [AI: DECLARE GLOBAL VARIABLES HERE USING 'let']
 
         try {
             // 1. SETUP
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0xf1f5f9); // Lab White
-            scene.fog = new THREE.Fog(0xf1f5f9, 20, 100); // Soft fade
             
             camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.position.set(5, 5, 8);
@@ -118,7 +119,7 @@ The 'code' field MUST use the following Robust Skeleton.
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Realistic shadows
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             renderer.toneMapping = THREE.ACESFilmicToneMapping;
             renderer.toneMappingExposure = 1.0;
             document.body.appendChild(renderer.domElement);
@@ -130,7 +131,7 @@ The 'code' field MUST use the following Robust Skeleton.
             // --- POST PROCESSING (BLOOM) ---
             const renderScene = new RenderPass(scene, camera);
             const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
-            bloomPass.threshold = 0.9; // Only very bright things glow
+            bloomPass.threshold = 0.9; 
             bloomPass.strength = 0.6;
             bloomPass.radius = 0.5;
 
@@ -138,18 +139,18 @@ The 'code' field MUST use the following Robust Skeleton.
             composer.addPass(renderScene);
             composer.addPass(bloomPass);
             
-            // --- LIGHTING (STUDIO) ---
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            // --- LIGHTING ---
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
             scene.add(ambientLight);
             
-            const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
             dirLight.position.set(10, 20, 10);
             dirLight.castShadow = true;
             dirLight.shadow.mapSize.width = 2048;
             dirLight.shadow.mapSize.height = 2048;
             scene.add(dirLight);
 
-            // --- INFINITE FLOOR (LAB STYLE) ---
+            // --- INFINITE FLOOR ---
             const grid = new THREE.GridHelper(200, 100, 0xcbd5e1, 0xe2e8f0);
             grid.position.y = 0.01;
             scene.add(grid);
@@ -157,7 +158,7 @@ The 'code' field MUST use the following Robust Skeleton.
             const planeGeo = new THREE.PlaneGeometry(200, 200);
             const planeMat = new THREE.MeshStandardMaterial({ 
                 color: 0xf1f5f9, 
-                roughness: 0.1, // Slightly reflective
+                roughness: 0.1, 
                 metalness: 0.1 
             });
             const plane = new THREE.Mesh(planeGeo, planeMat);
@@ -165,12 +166,27 @@ The 'code' field MUST use the following Robust Skeleton.
             plane.receiveShadow = true;
             scene.add(plane);
 
+            // --- ASSET HELPERS ---
+            function createProceduralTexture(color) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 256; canvas.height = 256;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = color; ctx.fillRect(0,0,256,256);
+                // Add noise
+                for(let i=0; i<5000; i++) {
+                    ctx.fillStyle = 'rgba(255,255,255,0.1)';
+                    ctx.beginPath();
+                    ctx.arc(Math.random()*256, Math.random()*256, 1, 0, Math.PI*2);
+                    ctx.fill();
+                }
+                return new THREE.CanvasTexture(canvas);
+            }
+
             // --- USER CONTENT START ---
             
             // [AI: GENERATE YOUR 3D MESHES HERE]
-            // TIP 1: Use 'THREE.TextureLoader().load(URL)' for textures.
-            // TIP 2: Use 'THREE.Group' to compose complex objects (Human, Car, Dog).
-            // TIP 3: Use 'let' variables.
+            // TIP: Break complex objects into functions like createPenguin() or createCar()
+            // TIP: Use 'let' variables.
             
             // --- USER CONTENT END ---
 
@@ -199,7 +215,6 @@ The 'code' field MUST use the following Robust Skeleton.
                 
                 // [AI: ANIMATION LOGIC HERE]
                 
-                // Use composer for bloom
                 composer.render();
             }
             animate();
@@ -237,6 +252,8 @@ const cleanAndParseJSON = (text: string): GeneratedSimulation => {
     if (data.code && typeof data.code === 'string') {
         data.code = data.code.replace(/const\s+([a-zA-Z_$][\w$]*)\s*;/g, 'let $1;');
         data.code = data.code.replace(/const\s+([a-zA-Z_$][\w$]*)\s*,/g, 'let $1,');
+        // Fix for "const x\n" pattern
+        data.code = data.code.replace(/const\s+([a-zA-Z_$][\w$]*)\s*(\r\n|\n|\r)/g, 'let $1$2');
     }
 
     if (!data.code || !data.controls) {
@@ -279,9 +296,9 @@ async function callOpenRouter(modelString: string, prompt: string): Promise<Gene
           model: modelString,
           messages: [
             { role: "system", content: THREE_D_SYSTEM_INSTRUCTION },
-            { role: "user", content: `Generate a Masterpiece 3D simulation for: "${prompt}". Use textures and complex geometry. Return strict JSON.` }
+            { role: "user", content: `Generate a Masterpiece 3D simulation for: "${prompt}". Construct complex objects phase-wise (e.g. createHead(), createBody()). Return strictly valid JSON.` }
           ],
-          response_format: { type: "json_object" } 
+          // REMOVED response_format to prevent fetch errors with Anthropic
         })
       });
     
