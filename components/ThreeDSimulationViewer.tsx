@@ -96,12 +96,13 @@ export const ThreeDSimulationViewer: React.FC<ThreeDSimulationViewerProps> = ({ 
   return (
     <div className="w-full h-full flex flex-col animate-in fade-in duration-700">
       
-      {/* HEADER (Light Modern Theme) */}
+      {/* HEADER (Clean Lab Theme) */}
       <div className="flex flex-col md:flex-row items-start justify-between mb-6 px-1 gap-4 md:gap-0">
         <div>
           <div className="flex items-center gap-2 mb-2">
-             <div className="px-2 py-0.5 bg-indigo-100 text-indigo-700 rounded-md text-[10px] font-bold uppercase tracking-wider shadow-sm border border-indigo-200">
-               3D Viewport
+             <div className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-md text-[10px] font-bold uppercase tracking-wider shadow-sm border border-blue-100 flex items-center gap-1">
+               <Icons.Box className="w-3 h-3" />
+               Virtual Lab
              </div>
              <h2 className="text-3xl font-bold text-slate-800 tracking-tight font-brand">{simulation.title}</h2>
           </div>
@@ -113,7 +114,7 @@ export const ThreeDSimulationViewer: React.FC<ThreeDSimulationViewerProps> = ({ 
               onClick={() => setIsEditing(!isEditing)}
               className={`
                  flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all shadow-sm border text-sm
-                 ${isEditing ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white hover:bg-slate-50 text-slate-600 border-slate-200'}
+                 ${isEditing ? 'bg-blue-600 text-white border-blue-600' : 'bg-white hover:bg-slate-50 text-slate-600 border-slate-200'}
               `}
             >
                <Icons.Pencil className="w-3.5 h-3.5" />
@@ -123,7 +124,7 @@ export const ThreeDSimulationViewer: React.FC<ThreeDSimulationViewerProps> = ({ 
             {/* Share to Community */}
              <button
                 onClick={onPublish}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all shadow-sm border text-sm bg-white hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 border-slate-200"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg font-semibold transition-all shadow-sm border text-sm bg-white hover:bg-blue-50 text-slate-600 hover:text-blue-600 border-slate-200"
             >
                 <Icons.Globe className="w-3.5 h-3.5" />
                 <span>Share</span>
@@ -171,7 +172,7 @@ export const ThreeDSimulationViewer: React.FC<ThreeDSimulationViewerProps> = ({ 
       <div 
          ref={containerRef}
          className={`
-           relative w-full bg-white rounded-xl border border-slate-200 shadow-xl shadow-slate-200/50 overflow-hidden group flex flex-col
+           relative w-full bg-[#f1f5f9] rounded-xl border border-slate-200 shadow-2xl shadow-slate-300/50 overflow-hidden group flex flex-col
            ${isFullscreen ? 'fixed inset-0 z-[100] rounded-none border-none' : 'aspect-video'}
          `}
       >
@@ -183,8 +184,8 @@ export const ThreeDSimulationViewer: React.FC<ThreeDSimulationViewerProps> = ({ 
             <div className="absolute inset-0 flex items-center justify-center">
                <div className="bg-white border border-slate-200 px-6 py-4 rounded-xl shadow-2xl flex flex-col items-center gap-3">
                  <div className="relative">
-                    <div className="w-12 h-12 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin"></div>
-                    <Icons.Box className="w-6 h-6 text-indigo-500 absolute top-3 left-3" />
+                    <div className="w-12 h-12 rounded-full border-2 border-blue-500 border-t-transparent animate-spin"></div>
+                    <Icons.Box className="w-6 h-6 text-blue-500 absolute top-3 left-3" />
                  </div>
                  <span className="font-semibold text-slate-700">Rebuilding Mesh...</span>
                </div>
@@ -197,9 +198,9 @@ export const ThreeDSimulationViewer: React.FC<ThreeDSimulationViewerProps> = ({ 
           <div className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl z-40 animate-in slide-in-from-bottom-4 fade-in">
              <form 
                onSubmit={handleRefineSubmit}
-               className="bg-white/90 backdrop-blur-md p-2 rounded-xl border border-indigo-200 shadow-2xl flex items-center gap-2"
+               className="bg-white/90 backdrop-blur-md p-2 rounded-xl border border-blue-200 shadow-2xl flex items-center gap-2"
              >
-                <div className="bg-indigo-600 p-3 rounded-lg text-white">
+                <div className="bg-blue-600 p-3 rounded-lg text-white">
                   <Icons.Bot className="w-6 h-6" />
                 </div>
                 <input 
@@ -213,7 +214,7 @@ export const ThreeDSimulationViewer: React.FC<ThreeDSimulationViewerProps> = ({ 
                 <button 
                   type="submit"
                   disabled={!editPrompt.trim()}
-                  className="p-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-3 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Icons.ArrowRight className="w-5 h-5" />
                 </button>
@@ -227,7 +228,7 @@ export const ThreeDSimulationViewer: React.FC<ThreeDSimulationViewerProps> = ({ 
           ref={iframeRef}
           srcDoc={simulation.code}
           title={simulation.title}
-          className="w-full h-full border-none block touch-none bg-white"
+          className="w-full h-full border-none block touch-none bg-[#f1f5f9]"
           style={{ width: '100%', height: '100%', touchAction: 'none' }}
           sandbox="allow-scripts allow-same-origin"
           allow="accelerometer; camera; encrypted-media; gyroscope; microphone; xr-spatial-tracking"
@@ -237,11 +238,11 @@ export const ThreeDSimulationViewer: React.FC<ThreeDSimulationViewerProps> = ({ 
         {!isEditing && (
             <>
                 <div className="absolute top-4 left-4 pointer-events-none flex flex-col gap-1">
-                    <span className="text-[10px] font-mono text-slate-400">VIEWPORT [PERSPECTIVE]</span>
-                    <span className="text-[10px] font-mono text-indigo-500 font-bold">READY</span>
+                    <span className="text-[10px] font-mono text-slate-400 uppercase">Interactive Studio</span>
+                    <span className="text-[10px] font-mono text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-full inline-block">LIVE RENDER</span>
                 </div>
 
-                <div className="absolute top-4 right-4 pointer-events-none bg-white/80 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 text-xs font-mono opacity-0 group-hover:opacity-100 transition-opacity select-none flex items-center gap-2 shadow-sm">
+                <div className="absolute top-4 right-4 pointer-events-none bg-white/90 backdrop-blur px-3 py-1.5 rounded-lg border border-slate-200 text-slate-500 text-xs font-mono opacity-0 group-hover:opacity-100 transition-opacity select-none flex items-center gap-2 shadow-sm">
                     <Icons.Box className="w-3 h-3" />
                     <span>Touch/Click to Rotate • Zoom</span>
                 </div>
@@ -251,7 +252,7 @@ export const ThreeDSimulationViewer: React.FC<ThreeDSimulationViewerProps> = ({ 
         {/* Fullscreen Trigger */}
         <button 
             onClick={toggleFullscreen}
-            className="absolute bottom-4 right-4 p-2 bg-white hover:bg-indigo-600 hover:text-white text-slate-500 rounded-lg backdrop-blur border border-slate-200 shadow-md transition-all opacity-0 group-hover:opacity-100"
+            className="absolute bottom-4 right-4 p-2 bg-white hover:bg-blue-600 hover:text-white text-slate-500 rounded-lg backdrop-blur border border-slate-200 shadow-md transition-all opacity-0 group-hover:opacity-100"
         >
             {isFullscreen ? <Icons.Close className="w-5 h-5"/> : <Icons.Maximize className="w-5 h-5"/>}
         </button>
@@ -267,7 +268,7 @@ export const ThreeDSimulationViewer: React.FC<ThreeDSimulationViewerProps> = ({ 
             </div>
             <div className="flex gap-2 items-center">
                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                <span className="text-xs font-bold text-slate-600">ENGINE ACTIVE</span>
+                <span className="text-xs font-bold text-slate-600">PHYSICS ENGINE ACTIVE</span>
             </div>
           </div>
           
@@ -278,7 +279,7 @@ export const ThreeDSimulationViewer: React.FC<ThreeDSimulationViewerProps> = ({ 
                   <>
                     <div className="flex justify-between items-center text-sm">
                       <label className="font-semibold text-slate-700">{control.label}</label>
-                      <span className="font-mono text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded text-xs border border-indigo-100">
+                      <span className="font-mono text-blue-600 bg-blue-50 px-2 py-0.5 rounded text-xs border border-blue-100">
                         {controlValues[control.id]}
                       </span>
                     </div>
@@ -289,7 +290,7 @@ export const ThreeDSimulationViewer: React.FC<ThreeDSimulationViewerProps> = ({ 
                       step={control.step}
                       value={controlValues[control.id] || 0}
                       onChange={(e) => handleControlChange(control.id, parseFloat(e.target.value))}
-                      className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600 hover:accent-indigo-500 transition-all"
+                      className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600 hover:accent-blue-500 transition-all"
                     />
                   </>
                 )}
@@ -301,7 +302,7 @@ export const ThreeDSimulationViewer: React.FC<ThreeDSimulationViewerProps> = ({ 
                 {control.type === 'toggle' && (
                    <div className="flex items-center justify-between mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
                       <span className="font-semibold text-slate-700 text-sm">{control.label}</span>
-                      <button onClick={() => handleControlChange(control.id, !controlValues[control.id])} className={`w-12 h-6 rounded-full transition-colors relative ${controlValues[control.id] ? 'bg-indigo-600' : 'bg-slate-300'}`}>
+                      <button onClick={() => handleControlChange(control.id, !controlValues[control.id])} className={`w-12 h-6 rounded-full transition-colors relative ${controlValues[control.id] ? 'bg-blue-600' : 'bg-slate-300'}`}>
                          <div className={`absolute top-1 left-1 bg-white w-4 h-4 rounded-full transition-transform ${controlValues[control.id] ? 'translate-x-6' : 'translate-x-0'}`} />
                       </button>
                    </div>
