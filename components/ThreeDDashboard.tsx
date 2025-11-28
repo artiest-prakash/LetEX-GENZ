@@ -2,10 +2,11 @@
 import React, { useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { Icons } from './Icons';
-import { generateWithOpenRouter } from '../services/openRouterService'; // UPDATED IMPORT
-import { GeneratedSimulation, GenerationStatus, UserProfile } from '../types';
+import { generateWithOpenRouter } from '../services/openRouterService';
+import { GeneratedSimulation, GenerationStatus, UserProfile, AIModelId } from '../types';
 import { LoadingState } from './LoadingState';
 import { ThreeDSimulationViewer } from './ThreeDSimulationViewer';
+import { ModelSelector } from './ModelSelector';
 
 interface ThreeDDashboardProps {
   user: any;
@@ -35,6 +36,7 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({
   const [simulation, setSimulation] = useState<GeneratedSimulation | null>(null);
   const [pendingSimulation, setPendingSimulation] = useState<GeneratedSimulation | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState<AIModelId>('claude-sonnet');
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
@@ -61,8 +63,8 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({
     setPendingSimulation(null);
 
     try {
-      // Use OpenRouter (Claude) Service
-      const data = await generateWithOpenRouter(prompt);
+      // Use OpenRouter (Claude/GPT) Service with Selected Model
+      const data = await generateWithOpenRouter(prompt, selectedModel);
       setPendingSimulation(data);
       
       if (user && userProfile) {
@@ -88,10 +90,6 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({
     if (pendingSimulation) {
       setSimulation(pendingSimulation);
       setStatus(GenerationStatus.COMPLETED);
-    } else {
-        if (status === GenerationStatus.GENERATING && !error) {
-             console.warn("Loading animation done, but data not ready.");
-        }
     }
   };
 
@@ -103,29 +101,29 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({
   };
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-br from-orange-50 via-slate-50 to-red-50 text-slate-900 -mt-4 md:-mt-10 px-4 py-10 md:px-8">
+    <div className="w-full min-h-screen bg-gradient-to-br from-indigo-50 via-slate-50 to-purple-50 text-slate-900 -mt-4 md:-mt-10 px-4 py-10 md:px-8">
       
       {status === GenerationStatus.IDLE && (
         <div className="max-w-4xl mx-auto text-center mt-10 animate-in fade-in slide-in-from-bottom-8">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-orange-200 text-orange-600 text-xs font-bold uppercase tracking-wider mb-6 shadow-xl shadow-orange-500/10">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-indigo-200 text-indigo-600 text-xs font-bold uppercase tracking-wider mb-6 shadow-xl shadow-indigo-500/10">
                <Icons.Box className="w-3 h-3" />
-               Powered by OpenRouter (Claude)
+               3D Studio Active
             </div>
 
             <h1 className="text-5xl md:text-7xl font-bold text-slate-900 mb-6 tracking-tight">
-               Build in <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-500 to-red-600">Three Dimensions</span>
+               Build in <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-purple-600">Three Dimensions</span>
             </h1>
             <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-12">
-               Generate immersive WebGL experiences instantly using Claude 3.5. Visualize molecules, space, or abstract art with accurate lighting and physics.
+               Generate immersive WebGL experiences instantly. Visualize molecules, space, or abstract art with accurate lighting and physics using the world's best AI models.
             </p>
 
-            <div className="bg-white p-2 rounded-2xl shadow-2xl shadow-orange-500/10 flex flex-col gap-4 max-w-2xl mx-auto border border-orange-100 ring-1 ring-orange-500/5">
+            <div className="bg-white p-2 rounded-2xl shadow-2xl shadow-indigo-500/10 flex flex-col gap-4 max-w-2xl mx-auto border border-indigo-50 ring-1 ring-indigo-500/5">
                <div className="relative">
                   <textarea
                      value={prompt}
                      onChange={(e) => setPrompt(e.target.value)}
                      placeholder="Describe a 3D scene (e.g. 'A spinning galaxy of particles')"
-                     className="w-full bg-slate-50 hover:bg-white focus:bg-white rounded-xl px-5 py-4 pr-32 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 transition-all resize-none h-32 md:h-28 text-lg"
+                     className="w-full bg-slate-50 hover:bg-white focus:bg-white rounded-xl px-5 py-4 pr-32 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all resize-none h-32 md:h-28 text-lg"
                      onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                            e.preventDefault();
@@ -133,8 +131,17 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({
                         }
                      }}
                   />
+                  
+                  {/* Model Selector Positioned Absolute Top Right */}
+                  <div className="absolute top-3 right-3 z-10">
+                      <ModelSelector 
+                          selectedModel={selectedModel}
+                          onSelect={setSelectedModel}
+                      />
+                  </div>
+
                   <div className="absolute bottom-3 right-3 flex items-center gap-3">
-                     <span className="text-xs text-orange-600/70 font-bold mr-2">
+                     <span className="text-xs text-indigo-600/70 font-bold mr-2">
                         {COST_3D} Credits
                       </span>
                      <button
@@ -144,7 +151,7 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({
                            flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold transition-all duration-300
                            ${!prompt.trim() 
                               ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
-                              : 'bg-gradient-to-r from-orange-500 to-red-600 text-white hover:shadow-lg hover:shadow-orange-500/30'}
+                              : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:shadow-lg hover:shadow-indigo-500/30'}
                         `}
                      >
                         <span>Render 3D</span>
@@ -159,7 +166,7 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({
                   <button
                      key={i}
                      onClick={() => setPrompt(s)}
-                     className="px-4 py-2 bg-white hover:bg-orange-50 border border-slate-200 hover:border-orange-200 text-xs text-slate-500 hover:text-orange-600 rounded-lg transition-all shadow-sm"
+                     className="px-4 py-2 bg-white hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 text-xs text-slate-500 hover:text-indigo-600 rounded-lg transition-all shadow-sm"
                   >
                      {s}
                   </button>

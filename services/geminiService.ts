@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Schema, Type } from "@google/genai";
-import { GeneratedSimulation, ChatMessage } from "../types";
+import { GeneratedSimulation, ChatMessage, AIModelId } from "../types";
 
 // ------------------------------------------------------------------
 // CONFIGURATION
@@ -205,11 +205,16 @@ export const generateChatResponse = async (history: ChatMessage[], newMessage: s
 // ------------------------------------------------------------------
 // MAIN EXPORT
 // ------------------------------------------------------------------
-export const generateSimulationCode = async (prompt: string, is3D: boolean = false): Promise<GeneratedSimulation> => {
+export const generateSimulationCode = async (prompt: string, is3D: boolean = false, modelId?: AIModelId): Promise<GeneratedSimulation> => {
   // If 3D is requested, this function shouldn't be called, but as a fallback/guard:
   if (is3D) {
-      throw new Error("Use generateWithSambaNova for 3D requests.");
+      throw new Error("Use generateWithOpenRouter for 3D requests.");
   }
+  
+  // Note: Currently 2D generation exclusively uses Google Gemini Flash regardless of model selection
+  // as it provides the most consistent JSON output for 2D Canvas code.
+  // In the future, we can map modelId to other 2D providers if needed.
+  
   try {
     return await generateWithGoogle(prompt);
   } catch (googleError) {

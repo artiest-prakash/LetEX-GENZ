@@ -12,7 +12,8 @@ import { Icons } from './components/Icons';
 import { ThreeDDashboard } from './components/ThreeDDashboard';
 import { CommunityPage } from './components/CommunityPage';
 import { AdminDashboard } from './components/AdminDashboard';
-import { GenerationStatus, GeneratedSimulation, HistoryItem, Page, UserProfile } from './types';
+import { ModelSelector } from './components/ModelSelector';
+import { GenerationStatus, GeneratedSimulation, HistoryItem, Page, UserProfile, AIModelId } from './types';
 
 const ADMIN_EMAIL = "ommprakashswain117@gmail.com";
 const COST_2D = 2.5;
@@ -71,6 +72,7 @@ const App: React.FC = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
 
   const [prompt, setPrompt] = useState('');
+  const [selectedModel, setSelectedModel] = useState<AIModelId>('gemini-flash');
   const [status, setStatus] = useState<GenerationStatus>(GenerationStatus.IDLE);
   const [simulation, setSimulation] = useState<GeneratedSimulation | null>(null);
   const [pendingSimulation, setPendingSimulation] = useState<GeneratedSimulation | null>(null);
@@ -179,13 +181,9 @@ const App: React.FC = () => {
 
         if (pendingType === '3d') {
             setCurrentPage('3d');
-            // We can't auto-trigger 3D here easily because it's a child component.
-            // But we can set the prompt if we moved prompt state up.
-            // For now, let's just restore the 2D flow or notify.
             alert("Welcome back! Please click 'Render 3D' to start your pending simulation.");
         } else {
             setPrompt(pendingPrompt);
-            // Wait a sec for profile to load then generate
             setTimeout(() => {
                 handleGenerate(pendingPrompt, currentUser);
             }, 1000);
@@ -194,7 +192,6 @@ const App: React.FC = () => {
   };
 
   const handleLogin = async () => {
-    // Save state before redirecting
     if (prompt.trim()) {
        localStorage.setItem('pending_gen_prompt', prompt);
        localStorage.setItem('pending_gen_type', currentPage === '3d' ? '3d' : '2d');
@@ -224,11 +221,6 @@ const App: React.FC = () => {
       return;
     }
 
-    // Credit Check
-    // Note: We need accurate profile here. If coming from auto-gen, profile might lag slightly.
-    // We'll optimistically proceed if profile is missing (race condition) or check DB.
-    
-    // Check locally first
     if (userProfile) {
         if (userProfile.credits < COST_2D) {
             alert(`Insufficient credits! This simulation requires ${COST_2D} credits.`);
@@ -249,12 +241,11 @@ const App: React.FC = () => {
 
     try {
       // Force 2D Generation
-      const data = await generateSimulationCode(promptToUse, false);
+      const data = await generateSimulationCode(promptToUse, false, selectedModel);
       setPendingSimulation(data);
       
       // Deduct Credit
       if (userToUse) {
-        // Optimistic update
         const currentCredits = userProfile?.credits || 15;
         const newCredits = Math.max(0, currentCredits - COST_2D);
         
@@ -407,7 +398,6 @@ const App: React.FC = () => {
             <span className="text-2xl font-bold tracking-tight text-slate-800 font-brand brand-font">LetEX</span>
           </div>
 
-          {/* Mobile User Section - Explicitly Visible */}
           <div className="md:hidden flex items-center">
             {user ? (
                <div className="flex items-center gap-2 bg-white/50 px-2 py-1 rounded-full border border-slate-100">
@@ -438,7 +428,6 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Navigation Buttons (Scrollable on mobile) */}
         <div className="flex items-center gap-2 bg-white/50 backdrop-blur-sm p-1 rounded-full border border-slate-200/50 overflow-x-auto max-w-full md:ml-4 no-scrollbar w-full md:w-auto justify-center">
             <button 
               onClick={() => { setCurrentPage('home'); resetSimulation(); }}
@@ -468,7 +457,6 @@ const App: React.FC = () => {
             )}
         </div>
         
-        {/* Auth / Profile & LetEX AI Button (Desktop) */}
         <div className="hidden md:flex items-center gap-4">
            {userProfile && (
                <div className="px-3 py-1 bg-slate-50 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 flex items-center gap-1.5 shadow-sm">
@@ -503,7 +491,6 @@ const App: React.FC = () => {
                         <span>{userName.charAt(0).toUpperCase()}</span>
                     )}
                     
-                    {/* PRO BADGE - BLUE TICK */}
                     {userProfile?.is_pro && (
                         <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white rounded-full p-[3px] border-2 border-white shadow-sm" title="Verified Pro">
                             <Icons.Check className="w-2 h-2 stroke-[3]" />
@@ -563,7 +550,6 @@ const App: React.FC = () => {
         
         {currentPage === 'home' && (
           <div className="w-full px-4 pb-20 pt-10">
-            {/* Hero Section */}
             {status === GenerationStatus.IDLE && (
               <div className="text-center mb-10 animate-in slide-in-from-bottom-5 fade-in duration-700 max-w-5xl mx-auto mt-6">
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider mb-6 shadow-sm">
@@ -588,7 +574,6 @@ const App: React.FC = () => {
               </div>
             )}
 
-            {/* Input Section */}
             {status !== GenerationStatus.COMPLETED && status !== GenerationStatus.GENERATING && (
               <div className="w-full mb-12 transition-all duration-700 ease-in-out">
                 <div className="bg-white p-2 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 flex flex-col gap-4 max-w-3xl mx-auto">
@@ -605,6 +590,15 @@ const App: React.FC = () => {
                         }
                       }}
                     />
+                    
+                    {/* Model Selector Top Right */}
+                    <div className="absolute top-3 right-3 z-10">
+                        <ModelSelector 
+                            selectedModel={selectedModel}
+                            onSelect={setSelectedModel}
+                        />
+                    </div>
+
                     <div className="absolute bottom-3 right-3 flex items-center gap-3">
                       <span className="text-xs text-slate-400 font-bold mr-2">
                         {COST_2D} Credits
@@ -626,7 +620,6 @@ const App: React.FC = () => {
                   </div>
                 </div>
                 
-                {/* Suggestions */}
                 {status === GenerationStatus.IDLE && (
                   <div className="mt-8 flex flex-wrap justify-center gap-3 max-w-4xl mx-auto">
                     {SUGGESTIONS.map((s, i) => (
@@ -641,7 +634,6 @@ const App: React.FC = () => {
                   </div>
                 )}
 
-                {/* History */}
                 {status === GenerationStatus.IDLE && user && (
                   <div className="mt-16 max-w-5xl mx-auto w-full animate-in fade-in slide-in-from-bottom-8 duration-700">
                     <div className="flex items-center justify-between mb-4 px-2">
@@ -682,7 +674,6 @@ const App: React.FC = () => {
               </div>
             )}
 
-            {/* Content Area */}
             <div className="w-full">
               {status === GenerationStatus.GENERATING && (
                 <LoadingState 
@@ -722,7 +713,6 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* Footer */}
       {currentPage !== 'admin' && (
       <footer className="relative z-10 w-full text-center py-8 text-slate-400 text-sm">
         <p>© 2024 LetEX Virtual Labs. Physics Engine v2.5</p>
@@ -737,7 +727,6 @@ const App: React.FC = () => {
       </footer>
       )}
       
-      {/* Chat Bot Container */}
       <ChatBot isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
 
     </div>
