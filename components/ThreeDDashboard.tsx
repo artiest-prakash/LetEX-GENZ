@@ -36,7 +36,7 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({
   const [simulation, setSimulation] = useState<GeneratedSimulation | null>(null);
   const [pendingSimulation, setPendingSimulation] = useState<GeneratedSimulation | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [selectedModel, setSelectedModel] = useState<AIModelId>('claude-opus-4.5');
+  const [selectedModel, setSelectedModel] = useState<AIModelId>('grok-2');
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;

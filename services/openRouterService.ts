@@ -21,12 +21,20 @@ The user may ask for complex objects (Animals, Vehicles, Structures).
 - *Example*: A "Human" is a Group of cylinders (limbs) and spheres (joints/head).
 - *Example*: A "Car" is a Box (body) and Cylinders (wheels).
 
-### 2. TEXTURE LIBRARY (Use these URLs)
+### 2. TEXTURE LIBRARY & MAPPING (STRICT)
+You MUST use these specific URLs for textures.
+- **Sun**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/lava/lavatile.jpg (Bright glowing texture)
 - **Earth**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg
 - **Moon**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg
+- **Mars**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/mars_1k.jpg
 - **Wood**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/hardwood2_diffuse.jpg
 - **Metal**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg (Use grey color + high metalness)
 - **Water**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/water/Water_1_M_Normal.jpg
+
+**CRITICAL MAPPING RULES:**
+1. If the object is the **SUN**, you MUST use the **Sun** texture (lavatile). **NEVER** use the Earth texture for the Sun.
+2. If the object is **EARTH**, use the **Earth** texture.
+3. For generic planets, use Moon or Mars textures with different colors.
 
 ### 3. MANDATORY OUTPUT FORMAT (SPLIT-BLOCK)
 To ensure the code is valid, you MUST output the response in TWO parts separated by the delimiter "|||SPLIT|||".
@@ -235,7 +243,7 @@ const cleanAndParseSplitResponse = (text: string): GeneratedSimulation => {
 const getModelString = (modelId: AIModelId) => {
     // Mapping user-facing IDs to actual OpenRouter model strings
     switch(modelId) {
-        // Map the requested "Opus 4.5" to the SOTA Claude 3.5 Sonnet (which acts as the 4.5 equivalent currently)
+        case 'grok-2': return 'x-ai/grok-2-1212';
         case 'claude-opus-4.5': return 'anthropic/claude-3.5-sonnet'; 
         case 'claude-sonnet': return 'anthropic/claude-3.5-sonnet';
         case 'gpt-4o': return 'openai/gpt-4o';
@@ -248,7 +256,7 @@ const getModelString = (modelId: AIModelId) => {
 // ------------------------------------------------------------------
 // API SERVICE
 // ------------------------------------------------------------------
-export const generateWithOpenRouter = async (prompt: string, modelId: AIModelId = 'claude-opus-4.5'): Promise<GeneratedSimulation> => {
+export const generateWithOpenRouter = async (prompt: string, modelId: AIModelId = 'grok-2'): Promise<GeneratedSimulation> => {
   const modelString = getModelString(modelId);
   console.log(`[OpenRouter] Generating with ${modelString} (ID: ${modelId})...`);
   

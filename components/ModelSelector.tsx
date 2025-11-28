@@ -5,6 +5,13 @@ import { AIModel, AIModelId } from '../types';
 
 const MODELS: AIModel[] = [
   {
+    id: 'grok-2',
+    name: 'Grok 2 (xAI)',
+    provider: 'xAI',
+    description: 'Advanced reasoning & code generation.',
+    color: 'bg-slate-900'
+  },
+  {
     id: 'claude-opus-4.5',
     name: 'Claude Opus 4.5',
     provider: 'Anthropic',
