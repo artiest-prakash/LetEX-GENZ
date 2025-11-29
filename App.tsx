@@ -23,7 +23,10 @@ const SUGGESTIONS = [
   "A solar system orbit simulator with gravity controls",
   "A fluid particle simulation with viscosity controls",
   "A projectile motion lab with wind resistance",
-  "A wave interference simulator"
+  "A wave interference simulator",
+  "An interactive spring-mass damper system",
+  "A visual demonstration of Pythagorean theorem",
+  "Evolutionary steering behavior simulation"
 ];
 
 // --- LOGIN MODAL COMPONENT ---
@@ -387,141 +390,126 @@ const App: React.FC = () => {
         <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-cyan-100/40 rounded-full blur-[120px]" />
       </div>
 
-      {/* Navigation */}
+      {/* Navigation (Sticky & Glassmorphic) */}
       {currentPage !== 'admin' && (
-      <nav className="relative z-50 px-4 md:px-6 py-4 flex flex-col md:flex-row items-center justify-between max-w-7xl mx-auto w-full gap-4 md:gap-0">
-        <div className="flex items-center gap-6 w-full md:w-auto justify-between">
-          <div className="flex items-center gap-3 group cursor-pointer" onClick={() => setCurrentPage('home')}>
-            <div className="bg-white p-2 rounded-xl shadow-md border border-slate-100 group-hover:scale-105 transition-transform duration-300">
-              <Icons.Logo className="text-blue-600 w-6 h-6" />
-            </div>
-            <span className="text-2xl font-bold tracking-tight text-slate-800 font-brand brand-font">LetEX</span>
-          </div>
-
-          <div className="md:hidden flex items-center">
-            {user ? (
-               <div className="flex items-center gap-2 bg-white/50 px-2 py-1 rounded-full border border-slate-100">
-                  <div className={`
-                    w-7 h-7 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-sm relative
-                    ${userProfile?.is_pro ? 'ring-2 ring-yellow-400 bg-slate-900' : 'bg-blue-600'}
-                  `}>
-                     {userName.charAt(0).toUpperCase()}
-                     {userProfile?.is_pro && (
-                        <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white rounded-full p-[2px] border border-white">
-                          <Icons.Check className="w-2 h-2" />
-                        </div>
-                     )}
-                  </div>
-                  <span className="text-xs font-bold text-slate-700 truncate max-w-[80px]">
-                    {userProfile?.credits ?? 0} Credits
-                  </span>
-               </div>
-            ) : (
-                <button 
-                  onClick={() => setShowLoginModal(true)} 
-                  className="flex items-center gap-2 px-3 py-1.5 bg-white hover:bg-slate-50 rounded-full border border-slate-200 shadow-sm transition-all"
-                >
-                    <Icons.Google className="w-3.5 h-3.5" />
-                    <span className="text-xs font-bold text-slate-700">Sign In</span>
-                </button>
-            )}
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2 bg-white/50 backdrop-blur-sm p-1 rounded-full border border-slate-200/50 overflow-x-auto max-w-full md:ml-4 no-scrollbar w-full md:w-auto justify-center">
-            <button 
-              onClick={() => { setCurrentPage('home'); resetSimulation(); }}
-              className={`whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-all ${currentPage === 'home' ? 'bg-white text-blue-600 shadow-sm border border-slate-100' : 'text-slate-500 hover:text-slate-800'}`}
-            >
-              2D Lab
-            </button>
-            <button 
-              onClick={() => { setCurrentPage('3d'); resetSimulation(); }}
-              className={`whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-all ${currentPage === '3d' ? 'bg-orange-600 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-            >
-              3D Lab
-            </button>
-            <button 
-              onClick={() => { setCurrentPage('community'); resetSimulation(); }}
-              className={`whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-all ${currentPage === 'community' ? 'bg-white text-purple-600 shadow-sm border border-slate-100' : 'text-slate-500 hover:text-slate-800'}`}
-            >
-              Community
-            </button>
-            {isAdmin && (
-                <button 
-                onClick={() => { setCurrentPage('admin'); resetSimulation(); }}
-                className={`whitespace-nowrap px-4 py-1.5 rounded-full text-sm font-medium transition-all bg-slate-900 text-white hover:bg-slate-700 shadow-sm`}
-                >
-                Admin
-                </button>
-            )}
-        </div>
-        
-        <div className="hidden md:flex items-center gap-4">
-           {userProfile && (
-               <div className="px-3 py-1 bg-slate-50 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 flex items-center gap-1.5 shadow-sm">
-                  <Icons.Cpu className="w-3 h-3 text-blue-500" />
-                  {userProfile.credits} Credits
-               </div>
-           )}
-
-           <button 
-              onClick={() => setIsChatOpen(!isChatOpen)}
-              className={`
-                flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold transition-all border
-                ${isChatOpen 
-                  ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-500/30' 
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-600'}
-              `}
-            >
-              <Icons.Sparkles className={`w-3.5 h-3.5 ${isChatOpen ? 'text-yellow-300' : 'text-blue-500'}`} />
-              Assistant
-            </button>
-
-          {user ? (
-             <div className="flex items-center gap-3 pl-4 border-l border-slate-200">
-                <div className="flex items-center gap-2">
-                  <div className={`
-                    relative w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-sm cursor-pointer border border-white
-                    ${userProfile?.is_pro ? 'ring-2 ring-yellow-400 ring-offset-1 bg-slate-900' : 'bg-blue-100 text-blue-600'}
-                  `}>
-                    {user.user_metadata?.avatar_url ? (
-                        <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full rounded-full" />
-                    ) : (
-                        <span>{userName.charAt(0).toUpperCase()}</span>
-                    )}
-                    
-                    {userProfile?.is_pro && (
-                        <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white rounded-full p-[3px] border-2 border-white shadow-sm" title="Verified Pro">
-                            <Icons.Check className="w-2 h-2 stroke-[3]" />
-                        </div>
-                    )}
-                  </div>
-                  
-                  <div className="text-right">
-                    <p className="text-xs font-bold text-slate-700 leading-tight">{userName}</p>
-                    <p className={`text-[10px] leading-tight font-semibold ${userProfile?.is_pro ? 'text-yellow-600' : 'text-slate-400'}`}>
-                        {userProfile?.is_pro ? 'PRO MEMBER' : 'Free Account'}
-                    </p>
-                  </div>
+      <nav className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-6 py-3 transition-all">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+            
+            {/* Logo Section */}
+            <div className="flex items-center gap-3 group cursor-pointer" onClick={() => setCurrentPage('home')}>
+                <div className="bg-white p-2 rounded-xl shadow-sm border border-slate-100 group-hover:scale-105 transition-transform duration-300">
+                <Icons.Logo className="text-blue-600 w-6 h-6" />
                 </div>
+                <span className="text-xl md:text-2xl font-bold tracking-tight text-slate-800 font-brand brand-font">LetEX</span>
+            </div>
+
+            {/* Center Tabs (Desktop) */}
+            <div className="hidden md:flex items-center bg-slate-100/80 p-1.5 rounded-full border border-slate-200/50">
                 <button 
-                  onClick={handleLogout}
-                  className="p-2 hover:bg-slate-100 text-slate-400 hover:text-red-500 rounded-full transition-colors"
-                  title="Sign Out"
+                onClick={() => { setCurrentPage('home'); resetSimulation(); }}
+                className={`px-6 py-1.5 rounded-full text-sm font-semibold transition-all duration-300 ${currentPage === 'home' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
                 >
-                  <Icons.LogOut className="w-4 h-4" />
+                2D Lab
                 </button>
-             </div>
-          ) : (
-            <button
-              onClick={() => setShowLoginModal(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-white text-slate-700 border border-slate-200 hover:border-blue-300 hover:shadow-sm rounded-lg text-sm font-semibold transition-all"
-            >
-              <Icons.Google className="w-4 h-4" />
-              <span>Sign In</span>
-            </button>
-          )}
+                <button 
+                onClick={() => { setCurrentPage('3d'); resetSimulation(); }}
+                className={`px-6 py-1.5 rounded-full text-sm font-semibold transition-all duration-300 ${currentPage === '3d' ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-md' : 'text-slate-500 hover:text-slate-800'}`}
+                >
+                3D Lab
+                </button>
+                <button 
+                onClick={() => { setCurrentPage('community'); resetSimulation(); }}
+                className={`px-6 py-1.5 rounded-full text-sm font-semibold transition-all duration-300 ${currentPage === 'community' ? 'bg-white text-purple-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                >
+                Community
+                </button>
+                {isAdmin && (
+                    <button 
+                    onClick={() => { setCurrentPage('admin'); resetSimulation(); }}
+                    className={`px-6 py-1.5 rounded-full text-sm font-semibold transition-all duration-300 ${currentPage === 'admin' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                    Admin
+                    </button>
+                )}
+            </div>
+
+            {/* User Profile / Mobile Menu */}
+            <div className="flex items-center gap-4">
+                
+                {/* Assistant Toggle */}
+                <button 
+                    onClick={() => setIsChatOpen(!isChatOpen)}
+                    className={`
+                        hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold transition-all border
+                        ${isChatOpen 
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-500/30' 
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-600'}
+                    `}
+                >
+                    <Icons.Sparkles className={`w-3.5 h-3.5 ${isChatOpen ? 'text-yellow-300' : 'text-blue-500'}`} />
+                    Assistant
+                </button>
+
+                {user ? (
+                    <div className="flex items-center gap-4 pl-4 md:border-l border-slate-200/60">
+                         {/* Credits (Desktop) */}
+                        {userProfile && (
+                            <div className="hidden md:flex px-3 py-1 bg-slate-50 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 items-center gap-1.5 shadow-sm">
+                                <Icons.Cpu className="w-3 h-3 text-blue-500" />
+                                {userProfile.credits} Credits
+                            </div>
+                        )}
+
+                        <div className="flex items-center gap-3">
+                            <div className="text-right hidden md:block">
+                                <p className="text-xs font-bold text-slate-700 leading-tight">{userName}</p>
+                                <p className={`text-[10px] leading-tight font-semibold ${userProfile?.is_pro ? 'text-yellow-600' : 'text-slate-400'}`}>
+                                    {userProfile?.is_pro ? 'PRO MEMBER' : 'Free Account'}
+                                </p>
+                            </div>
+                            
+                            <div className={`
+                                relative w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-sm cursor-pointer border border-white
+                                ${userProfile?.is_pro ? 'ring-2 ring-yellow-400 ring-offset-1 bg-slate-900' : 'bg-blue-100 text-blue-600'}
+                            `}>
+                                {user.user_metadata?.avatar_url ? (
+                                    <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full rounded-full" />
+                                ) : (
+                                    <span>{userName.charAt(0).toUpperCase()}</span>
+                                )}
+                                {userProfile?.is_pro && (
+                                    <div className="absolute -bottom-1 -right-1 bg-blue-500 text-white rounded-full p-[3px] border-2 border-white shadow-sm" title="Verified Pro">
+                                        <Icons.Check className="w-2 h-2 stroke-[3]" />
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <button 
+                                onClick={handleLogout}
+                                className="p-2 hover:bg-slate-100 text-slate-400 hover:text-red-500 rounded-full transition-colors hidden md:block"
+                                title="Sign Out"
+                            >
+                                <Icons.LogOut className="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <button
+                    onClick={() => setShowLoginModal(true)}
+                    className="flex items-center gap-2 px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-full text-sm font-semibold transition-all shadow-md shadow-slate-900/10"
+                    >
+                        <Icons.Google className="w-4 h-4" />
+                        <span>Sign In</span>
+                    </button>
+                )}
+            </div>
+        </div>
+
+        {/* Mobile Tabs (Below Nav) */}
+        <div className="md:hidden flex justify-center mt-3 pb-1 gap-2 overflow-x-auto no-scrollbar">
+            <button onClick={() => setCurrentPage('home')} className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ${currentPage === 'home' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}>2D Lab</button>
+            <button onClick={() => setCurrentPage('3d')} className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ${currentPage === '3d' ? 'bg-orange-600 text-white' : 'bg-slate-100 text-slate-500'}`}>3D Lab</button>
+            <button onClick={() => setCurrentPage('community')} className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ${currentPage === 'community' ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-500'}`}>Community</button>
         </div>
       </nav>
       )}
@@ -576,13 +564,14 @@ const App: React.FC = () => {
 
             {status !== GenerationStatus.COMPLETED && status !== GenerationStatus.GENERATING && (
               <div className="w-full mb-12 transition-all duration-700 ease-in-out">
-                <div className="bg-white p-2 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 flex flex-col gap-4 max-w-3xl mx-auto">
+                {/* 2D Input Area - Modernized */}
+                <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 flex flex-col gap-4 max-w-3xl mx-auto overflow-hidden relative group">
                   <div className="relative">
                     <textarea
                       value={prompt}
                       onChange={(e) => setPrompt(e.target.value)}
                       placeholder="Describe your simulation (e.g., 'Double pendulum with adjustable mass')"
-                      className="w-full bg-slate-50 hover:bg-white focus:bg-white rounded-xl px-5 py-4 pr-32 text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all resize-none h-32 md:h-28 text-lg"
+                      className="w-full bg-transparent rounded-2xl px-6 py-6 pb-20 text-slate-700 placeholder-slate-400 focus:outline-none transition-all resize-none h-40 md:h-44 text-lg font-medium leading-relaxed group-focus-within:ring-0"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault();
@@ -591,46 +580,50 @@ const App: React.FC = () => {
                       }}
                     />
                     
-                    {/* Model Selector Top Right */}
-                    <div className="absolute top-3 right-3 z-10">
+                    {/* Focus Glow */}
+                    <div className="absolute inset-0 rounded-3xl pointer-events-none transition-all duration-300 border-2 border-transparent group-focus-within:border-blue-100 group-focus-within:shadow-[0_0_20px_rgba(59,130,246,0.1)]"></div>
+                    
+                    {/* Input Bottom Bar (Model Selector Left, Generate Right) */}
+                    <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
+                         {/* Model Selector (Bottom Left) */}
                         <ModelSelector 
                             selectedModel={selectedModel}
                             onSelect={setSelectedModel}
                         />
+
+                        {/* Generate Button (Bottom Right) */}
+                        <button
+                          onClick={() => handleGenerate()}
+                          disabled={!prompt.trim()}
+                          className={`
+                            flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold text-sm transition-all duration-300
+                            ${!prompt.trim() 
+                              ? 'bg-slate-100 text-slate-300 cursor-not-allowed' 
+                              : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/20 hover:scale-[1.02] active:scale-95'}
+                          `}
+                        >
+                          <span>Generate</span>
+                          <Icons.ArrowRight className="w-4 h-4" />
+                        </button>
                     </div>
 
-                    <div className="absolute bottom-3 right-3 flex items-center gap-3">
-                      <span className="text-xs text-slate-400 font-bold mr-2">
-                        {COST_2D} Credits
-                      </span>
-                      <button
-                        onClick={() => handleGenerate()}
-                        disabled={!prompt.trim()}
-                        className={`
-                          flex items-center gap-2 px-6 py-2.5 rounded-xl font-semibold transition-all duration-300
-                          ${!prompt.trim() 
-                            ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
-                            : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/30 hover:scale-105 active:scale-95'}
-                        `}
-                      >
-                        <span>Generate</span>
-                        <Icons.ArrowRight className="w-4 h-4" />
-                      </button>
-                    </div>
                   </div>
                 </div>
                 
+                {/* Horizontal Suggestion Slider */}
                 {status === GenerationStatus.IDLE && (
-                  <div className="mt-8 flex flex-wrap justify-center gap-3 max-w-4xl mx-auto">
-                    {SUGGESTIONS.map((s, i) => (
-                      <button
-                        key={i}
-                        onClick={() => handleSuggestion(s)}
-                        className="px-4 py-2 bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-200 text-sm text-slate-600 hover:text-blue-600 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
-                      >
-                        {s}
-                      </button>
-                    ))}
+                  <div className="mt-8 w-full max-w-5xl mx-auto overflow-x-auto pb-4 no-scrollbar">
+                     <div className="flex gap-3 px-4 min-w-max mx-auto snap-x">
+                        {SUGGESTIONS.map((s, i) => (
+                          <button
+                            key={i}
+                            onClick={() => handleSuggestion(s)}
+                            className="snap-center px-5 py-2.5 bg-white hover:bg-blue-50 border border-slate-200 hover:border-blue-200 text-sm text-slate-600 hover:text-blue-600 rounded-full transition-all duration-200 shadow-sm hover:shadow-md whitespace-nowrap"
+                          >
+                            {s}
+                          </button>
+                        ))}
+                     </div>
                   </div>
                 )}
 
