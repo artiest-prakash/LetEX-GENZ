@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { supabase } from '../services/supabaseClient';
 import { Icons } from './Icons';
@@ -105,19 +104,19 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({
 
   return (
     // Orange-Red Light Theme Background
-    <div className="w-full min-h-screen bg-gradient-to-br from-orange-50 via-white to-rose-50 text-slate-900 -mt-4 md:-mt-10 px-4 py-10 md:px-8">
+    <div className="w-full min-h-screen bg-gradient-to-br from-orange-50 via-white to-rose-50 text-slate-900 -mt-4 md:-mt-10 px-4 py-6 md:py-10 md:px-8">
       
       {status === GenerationStatus.IDLE && (
-        <div className="max-w-4xl mx-auto text-center mt-10 animate-in fade-in slide-in-from-bottom-8">
+        <div className="max-w-4xl mx-auto text-center mt-6 md:mt-10 animate-in fade-in slide-in-from-bottom-8">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-orange-200 text-orange-600 text-xs font-bold uppercase tracking-wider mb-6 shadow-xl shadow-orange-500/10">
                <Icons.Box className="w-3 h-3" />
                3D Studio Active
             </div>
 
-            <h1 className="text-5xl md:text-7xl font-bold text-slate-900 mb-6 tracking-tight">
+            <h1 className="text-4xl md:text-7xl font-bold text-slate-900 mb-4 md:mb-6 tracking-tight">
                Build in <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-red-600">Three Dimensions</span>
             </h1>
-            <p className="text-lg text-slate-600 max-w-2xl mx-auto mb-12">
+            <p className="text-base md:text-lg text-slate-600 max-w-2xl mx-auto mb-10 md:mb-12">
                Generate immersive WebGL experiences instantly. Visualize molecules, space, or complex structures using geometric composition.
             </p>
 
@@ -128,7 +127,7 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({
                      value={prompt}
                      onChange={(e) => setPrompt(e.target.value)}
                      placeholder="Describe a 3D scene (e.g. 'A futuristic robot arm picking up a cube')"
-                     className="w-full bg-transparent rounded-2xl px-6 py-6 pb-20 text-slate-800 placeholder-slate-400 focus:outline-none transition-all resize-none h-40 md:h-44 text-lg font-medium leading-relaxed group-focus-within:ring-0"
+                     className="w-full bg-transparent rounded-2xl px-6 py-6 pb-20 text-slate-800 placeholder-slate-400 focus:outline-none transition-all resize-none h-40 md:h-44 text-base md:text-lg font-medium leading-relaxed group-focus-within:ring-0"
                      onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                            e.preventDefault();

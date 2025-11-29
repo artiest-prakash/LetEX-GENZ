@@ -10,6 +10,8 @@
       body {
         font-family: 'Inter', sans-serif;
         background-color: #f8fafc; /* Slate 50 */
+        margin: 0;
+        min-height: 100vh;
       }
       h1, h2, h3, h4, h5, h6, .brand-font {
         font-family: 'Space Grotesk', sans-serif;
@@ -23,6 +25,7 @@
       /* Custom scrollbar */
       ::-webkit-scrollbar {
         width: 8px;
+        height: 4px; /* Horizontal scrollbar height */
       }
       ::-webkit-scrollbar-track {
         background: transparent;
@@ -34,13 +37,90 @@
       ::-webkit-scrollbar-thumb:hover {
         background: #94a3b8;
       }
-      .animate-float {
-        animation: float 6s ease-in-out infinite;
+      
+      /* Animation Utilities (Manual implementation since plugin is missing) */
+      .animate-in {
+        animation-duration: 0.5s;
+        animation-fill-mode: both;
       }
+      .fade-in {
+        animation-name: fadeIn;
+      }
+      .slide-in-from-bottom-4 {
+        animation-name: slideInBottom4;
+      }
+      .slide-in-from-bottom-8 {
+        animation-name: slideInBottom8;
+      }
+      .slide-in-from-bottom-10 {
+        animation-name: slideInBottom10;
+      }
+      .slide-in-from-top-4 {
+        animation-name: slideInTop4;
+      }
+      .zoom-in-95 {
+        animation-name: zoomIn95;
+      }
+      .zoom-in {
+        animation-name: zoomIn;
+      }
+      
+      .delay-700 { animation-delay: 0.7s; }
+      .duration-300 { animation-duration: 0.3s; }
+      .duration-500 { animation-duration: 0.5s; }
+      .duration-700 { animation-duration: 0.7s; }
+
       @keyframes float {
         0% { transform: translateY(0px); }
         50% { transform: translateY(-10px); }
         100% { transform: translateY(0px); }
+      }
+      @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      @keyframes slideInBottom4 {
+        from { transform: translateY(1rem); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      @keyframes slideInBottom8 {
+        from { transform: translateY(2rem); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      @keyframes slideInBottom10 {
+        from { transform: translateY(2.5rem); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      @keyframes slideInTop4 {
+        from { transform: translateY(-1rem); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      @keyframes zoomIn95 {
+        from { transform: scale(0.95); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+      }
+      @keyframes zoomIn {
+        from { transform: scale(0.5); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+      }
+      .animate-float {
+        animation: float 6s ease-in-out infinite;
+      }
+      .animate-spin-slow {
+        animation: spin 3s linear infinite;
+      }
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      
+      /* Utilities */
+      .no-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
+      .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
       }
     </style>
   <script type="importmap">

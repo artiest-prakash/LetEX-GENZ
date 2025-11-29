@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { generateSimulationCode } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
@@ -33,7 +32,7 @@ const SUGGESTIONS = [
 const LoginModal: React.FC<{ isOpen: boolean; onClose: () => void; onLogin: () => void }> = ({ isOpen, onClose, onLogin }) => {
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300 px-4">
       <div className="bg-white p-8 rounded-3xl shadow-2xl max-w-md w-full relative animate-in zoom-in-95 duration-300 border border-slate-100">
         <button onClick={onClose} className="absolute top-4 right-4 p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-red-500 transition-colors">
           <Icons.Close className="w-5 h-5" />
@@ -392,15 +391,15 @@ const App: React.FC = () => {
 
       {/* Navigation (Sticky & Glassmorphic) */}
       {currentPage !== 'admin' && (
-      <nav className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-6 py-3 transition-all">
+      <nav className="sticky top-0 z-50 w-full bg-white/80 backdrop-blur-xl border-b border-slate-200/60 px-4 md:px-6 py-3 transition-all">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
             
             {/* Logo Section */}
-            <div className="flex items-center gap-3 group cursor-pointer" onClick={() => setCurrentPage('home')}>
-                <div className="bg-white p-2 rounded-xl shadow-sm border border-slate-100 group-hover:scale-105 transition-transform duration-300">
-                <Icons.Logo className="text-blue-600 w-6 h-6" />
+            <div className="flex items-center gap-2 md:gap-3 group cursor-pointer shrink-0" onClick={() => setCurrentPage('home')}>
+                <div className="bg-white p-1.5 md:p-2 rounded-xl shadow-sm border border-slate-100 group-hover:scale-105 transition-transform duration-300">
+                <Icons.Logo className="text-blue-600 w-5 h-5 md:w-6 md:h-6" />
                 </div>
-                <span className="text-xl md:text-2xl font-bold tracking-tight text-slate-800 font-brand brand-font">LetEX</span>
+                <span className="text-lg md:text-2xl font-bold tracking-tight text-slate-800 font-brand brand-font">LetEX</span>
             </div>
 
             {/* Center Tabs (Desktop) */}
@@ -434,24 +433,24 @@ const App: React.FC = () => {
             </div>
 
             {/* User Profile / Mobile Menu */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 md:gap-4">
                 
-                {/* Assistant Toggle */}
+                {/* Assistant Toggle (Visible on Mobile now too, icon only) */}
                 <button 
                     onClick={() => setIsChatOpen(!isChatOpen)}
                     className={`
-                        hidden md:flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold transition-all border
+                        flex items-center gap-2 px-2 md:px-3 py-1.5 rounded-full text-sm font-bold transition-all border
                         ${isChatOpen 
                         ? 'bg-blue-600 text-white border-blue-600 shadow-lg shadow-blue-500/30' 
                         : 'bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:text-blue-600'}
                     `}
                 >
-                    <Icons.Sparkles className={`w-3.5 h-3.5 ${isChatOpen ? 'text-yellow-300' : 'text-blue-500'}`} />
-                    Assistant
+                    <Icons.Sparkles className={`w-4 h-4 md:w-3.5 md:h-3.5 ${isChatOpen ? 'text-yellow-300' : 'text-blue-500'}`} />
+                    <span className="hidden md:inline">Assistant</span>
                 </button>
 
                 {user ? (
-                    <div className="flex items-center gap-4 pl-4 md:border-l border-slate-200/60">
+                    <div className="flex items-center gap-2 md:gap-4 pl-2 md:pl-4 border-l border-slate-200/60">
                          {/* Credits (Desktop) */}
                         {userProfile && (
                             <div className="hidden md:flex px-3 py-1 bg-slate-50 rounded-lg border border-slate-200 text-xs font-bold text-slate-600 items-center gap-1.5 shadow-sm">
@@ -459,9 +458,17 @@ const App: React.FC = () => {
                                 {userProfile.credits} Credits
                             </div>
                         )}
+                        
+                         {/* Credits (Mobile Compact) */}
+                         {userProfile && (
+                            <div className="md:hidden flex items-center gap-1 text-xs font-bold text-slate-500">
+                                <Icons.Cpu className="w-3 h-3 text-blue-500" />
+                                {userProfile.credits}
+                            </div>
+                        )}
 
                         <div className="flex items-center gap-3">
-                            <div className="text-right hidden md:block">
+                            <div className="text-right hidden lg:block">
                                 <p className="text-xs font-bold text-slate-700 leading-tight">{userName}</p>
                                 <p className={`text-[10px] leading-tight font-semibold ${userProfile?.is_pro ? 'text-yellow-600' : 'text-slate-400'}`}>
                                     {userProfile?.is_pro ? 'PRO MEMBER' : 'Free Account'}
@@ -469,7 +476,7 @@ const App: React.FC = () => {
                             </div>
                             
                             <div className={`
-                                relative w-9 h-9 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-sm cursor-pointer border border-white
+                                relative w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center text-white font-bold text-xs shadow-sm cursor-pointer border border-white shrink-0
                                 ${userProfile?.is_pro ? 'ring-2 ring-yellow-400 ring-offset-1 bg-slate-900' : 'bg-blue-100 text-blue-600'}
                             `}>
                                 {user.user_metadata?.avatar_url ? (
@@ -496,20 +503,24 @@ const App: React.FC = () => {
                 ) : (
                     <button
                     onClick={() => setShowLoginModal(true)}
-                    className="flex items-center gap-2 px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-full text-sm font-semibold transition-all shadow-md shadow-slate-900/10"
+                    className="flex items-center gap-2 px-4 md:px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-full text-xs md:text-sm font-semibold transition-all shadow-md shadow-slate-900/10"
                     >
                         <Icons.Google className="w-4 h-4" />
-                        <span>Sign In</span>
+                        <span className="hidden md:inline">Sign In</span>
+                        <span className="md:hidden">Login</span>
                     </button>
                 )}
             </div>
         </div>
 
         {/* Mobile Tabs (Below Nav) */}
-        <div className="md:hidden flex justify-center mt-3 pb-1 gap-2 overflow-x-auto no-scrollbar">
-            <button onClick={() => setCurrentPage('home')} className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ${currentPage === 'home' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500'}`}>2D Lab</button>
-            <button onClick={() => setCurrentPage('3d')} className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ${currentPage === '3d' ? 'bg-orange-600 text-white' : 'bg-slate-100 text-slate-500'}`}>3D Lab</button>
-            <button onClick={() => setCurrentPage('community')} className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ${currentPage === 'community' ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-500'}`}>Community</button>
+        <div className="md:hidden flex justify-center mt-3 pb-1 gap-2 overflow-x-auto no-scrollbar border-t border-slate-100 pt-3">
+            <button onClick={() => setCurrentPage('home')} className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${currentPage === 'home' ? 'bg-blue-600 text-white' : 'bg-slate-50 text-slate-500 border border-slate-100'}`}>2D Lab</button>
+            <button onClick={() => setCurrentPage('3d')} className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${currentPage === '3d' ? 'bg-orange-600 text-white' : 'bg-slate-50 text-slate-500 border border-slate-100'}`}>3D Lab</button>
+            <button onClick={() => setCurrentPage('community')} className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${currentPage === 'community' ? 'bg-purple-600 text-white' : 'bg-slate-50 text-slate-500 border border-slate-100'}`}>Community</button>
+            {isAdmin && (
+                 <button onClick={() => setCurrentPage('admin')} className={`px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-colors ${currentPage === 'admin' ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-500 border border-slate-100'}`}>Admin</button>
+            )}
         </div>
       </nav>
       )}
@@ -537,7 +548,7 @@ const App: React.FC = () => {
         )}
         
         {currentPage === 'home' && (
-          <div className="w-full px-4 pb-20 pt-10">
+          <div className="w-full px-4 pb-20 pt-10 flex flex-col items-center">
             {status === GenerationStatus.IDLE && (
               <div className="text-center mb-10 animate-in slide-in-from-bottom-5 fade-in duration-700 max-w-5xl mx-auto mt-6">
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-slate-200 text-slate-600 text-xs font-bold uppercase tracking-wider mb-6 shadow-sm">
@@ -563,7 +574,7 @@ const App: React.FC = () => {
             )}
 
             {status !== GenerationStatus.COMPLETED && status !== GenerationStatus.GENERATING && (
-              <div className="w-full mb-12 transition-all duration-700 ease-in-out">
+              <div className="w-full max-w-5xl mb-12 transition-all duration-700 ease-in-out">
                 {/* 2D Input Area - Modernized */}
                 <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 flex flex-col gap-4 max-w-3xl mx-auto overflow-hidden relative group">
                   <div className="relative">
@@ -667,7 +678,7 @@ const App: React.FC = () => {
               </div>
             )}
 
-            <div className="w-full">
+            <div className="w-full max-w-6xl">
               {status === GenerationStatus.GENERATING && (
                 <LoadingState 
                   simulationTitle={pendingSimulation?.title} 
