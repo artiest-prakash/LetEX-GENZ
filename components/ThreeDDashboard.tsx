@@ -120,8 +120,9 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({
                Generate immersive WebGL experiences instantly. Visualize molecules, space, or complex structures using geometric composition.
             </p>
 
-            {/* Input Bar - Enhanced Appearance (White, Shadow, Glow) */}
-            <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 flex flex-col gap-4 max-w-2xl mx-auto overflow-hidden relative group">
+            {/* Input Bar - Enhanced Appearance (Matches 2D Styling) */}
+            {/* REMOVED overflow-hidden TO FIX DROPDOWN CLIPPING */}
+            <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 flex flex-col gap-4 max-w-2xl mx-auto relative group">
                <div className="relative">
                   <textarea
                      value={prompt}

@@ -74,7 +74,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({ selectedModel, onS
       </button>
 
       {isOpen && (
-        <div className="absolute top-full right-0 mt-2 w-64 bg-white rounded-xl border border-slate-100 shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        <div className="absolute bottom-full left-0 mb-2 w-64 bg-white rounded-xl border border-slate-100 shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
           <div className="p-2 bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
             Select Engine
           </div>

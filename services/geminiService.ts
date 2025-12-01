@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Schema, Type } from "@google/genai";
 import { GeneratedSimulation, ChatMessage, AIModelId } from "../types";
 
@@ -101,12 +100,15 @@ const cleanAndParseJSON = (text: string): GeneratedSimulation => {
       jsonString = jsonString.replace(/```/g, '').trim();
   }
 
-  // Heuristic to find JSON object
+  // Heuristic to find JSON object (Robust finding of first '{' and last '}')
   const firstBrace = jsonString.indexOf('{');
   const lastBrace = jsonString.lastIndexOf('}');
   
   if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
     jsonString = jsonString.substring(firstBrace, lastBrace + 1);
+  } else {
+    // If braces are missing, the output is likely not JSON
+    throw new Error("Invalid output format: Could not find JSON object.");
   }
   
   let data;
@@ -114,7 +116,7 @@ const cleanAndParseJSON = (text: string): GeneratedSimulation => {
       data = JSON.parse(jsonString);
   } catch (e) {
       console.error("Failed to parse JSON. Raw text:", jsonString.substring(0, 200) + "...");
-      throw new Error("Received malformed data from AI. Please try again.");
+      throw new Error("Received malformed data from AI. The physics engine stuttered. Please try again.");
   }
   
   if (!data.code || !data.controls) {
@@ -138,16 +140,30 @@ export const generateWithGoogle = async (prompt: string): Promise<GeneratedSimul
       responseSchema: SIMULATION_SCHEMA
   };
 
-  const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
-    contents: `Create a 2D Canvas physics simulation for: "${prompt}".`,
-    config: config
-  });
+  try {
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: `Create a 2D Canvas physics simulation for: "${prompt}".`,
+        config: config
+    });
 
-  const text = response.text;
-  if (!text) throw new Error("No response output from Google AI.");
+    const text = response.text;
+    if (!text) throw new Error("No response output from Google AI.");
 
-  return cleanAndParseJSON(text);
+    return cleanAndParseJSON(text);
+  } catch (error: any) {
+    console.error("Google AI Error:", error);
+    
+    // Friendly error messaging
+    if (error.message?.includes('SAFETY')) {
+        throw new Error("The simulation request was flagged by safety filters. Please try a different prompt.");
+    }
+    if (error.message?.includes('429')) {
+        throw new Error("High traffic on the AI network. Please wait a moment and try again.");
+    }
+    
+    throw error;
+  }
 };
 
 export const refineSimulationCode = async (currentSimulation: GeneratedSimulation, userPrompt: string): Promise<GeneratedSimulation> => {

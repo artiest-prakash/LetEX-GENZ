@@ -576,7 +576,8 @@ const App: React.FC = () => {
             {status !== GenerationStatus.COMPLETED && status !== GenerationStatus.GENERATING && (
               <div className="w-full max-w-5xl mb-12 transition-all duration-700 ease-in-out">
                 {/* 2D Input Area - Modernized */}
-                <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 flex flex-col gap-4 max-w-3xl mx-auto overflow-hidden relative group">
+                {/* REMOVED overflow-hidden TO FIX DROPDOWN CLIPPING */}
+                <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 flex flex-col gap-4 max-w-3xl mx-auto relative group">
                   <div className="relative">
                     <textarea
                       value={prompt}
