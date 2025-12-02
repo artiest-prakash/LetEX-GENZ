@@ -1,4 +1,4 @@
-import { GoogleGenAI, Schema, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 import { GeneratedSimulation, ChatMessage, AIModelId } from "../types";
 
 // ------------------------------------------------------------------
@@ -8,76 +8,50 @@ const getApiKey = () => {
   if (typeof process !== 'undefined' && process.env && process.env.API_KEY) {
     return process.env.API_KEY;
   }
+  // Fallback placeholder - ideally this should come from env or user input if open source
   return "AIzaSyA3Soixg6FGUNl_ES7nnCMH6rbGIRtvmhk";
 };
 
 const GOOGLE_API_KEY = getApiKey();
 
 // ------------------------------------------------------------------
-// SCHEMA DEFINITIONS
-// ------------------------------------------------------------------
-const SIMULATION_SCHEMA: Schema = {
-  type: Type.OBJECT,
-  properties: {
-    title: { type: Type.STRING, description: "Title of the simulation" },
-    description: { type: Type.STRING, description: "Short description of what the simulation demonstrates" },
-    instructions: { type: Type.STRING, description: "User instructions for interaction" },
-    code: { type: Type.STRING, description: "The complete HTML5/JS source code" },
-    controls: {
-      type: Type.ARRAY,
-      items: {
-        type: Type.OBJECT,
-        properties: {
-          id: { type: Type.STRING },
-          type: { type: Type.STRING, enum: ['slider', 'button', 'toggle'] },
-          label: { type: Type.STRING },
-          defaultValue: { type: Type.NUMBER, description: "Default numeric value (0 or 1 for toggle)" },
-          min: { type: Type.NUMBER },
-          max: { type: Type.NUMBER },
-          step: { type: Type.NUMBER },
-        },
-        required: ["id", "type", "label", "defaultValue"]
-      }
-    }
-  },
-  required: ["title", "description", "code", "controls"]
-};
-
-// ------------------------------------------------------------------
-// SYSTEM INSTRUCTIONS (STRICTLY 2D)
+// SYSTEM INSTRUCTIONS (2D SPLIT-BLOCK)
 // ------------------------------------------------------------------
 const SIMULATION_SYSTEM_INSTRUCTION = `
 You are LetEX, an expert Physics Simulation Engine using HTML5 Canvas (2D Context).
 
 ### GOAL
-Generate a self-contained HTML5 Canvas simulation code string.
+Generate a self-contained HTML5 Canvas simulation.
 
-### STRICT RULES
-1. **2D ONLY**: Use 'canvas.getContext("2d")'. DO NOT use Three.js, WebGL, or any 3D libraries.
-2. **Visual Style**: Minimalist, scientific, high contrast. Background: #f8fafc (Slate 50). Objects: Blue/Cyan gradients.
+### STRICT OUTPUT FORMAT (SPLIT-BLOCK)
+To ensure the code is generated correctly, you MUST output the response in TWO parts separated by the delimiter "|||SPLIT|||".
+
+**PART 1: METADATA (JSON)**
+{
+  "title": "Title",
+  "description": "Description",
+  "instructions": "Instructions",
+  "controls": [ 
+    {"id": "speed", "type": "slider", "label": "Speed", "defaultValue": 1, "min": 0, "max": 5, "step": 0.1} 
+  ]
+}
+
+|||SPLIT|||
+
+**PART 2: CODE (HTML)**
+<!DOCTYPE html>
+<html>
+... full code ...
+</html>
+
+### CODING RULES (2D ONLY)
+1. **2D ONLY**: Use 'canvas.getContext("2d")'. DO NOT use Three.js.
+2. **Visual Style**: Minimalist, scientific. Background: #f8fafc (Slate 50). Objects: Blue/Cyan/Orange.
 3. **Architecture**:
-   - Return a full HTML string with <canvas> and <script>.
    - Must handle window resize.
    - Must implement an animation loop using requestAnimationFrame.
-   - Listen for 'message' events to update parameters from the external UI controls.
-4. **Syntax**:
-   - NEVER declare 'const' without initialization (e.g. 'const x;' is invalid). Use 'let'.
-   - Ensure the code handles errors gracefully.
-
-### INTERACTION
-- The simulation must respond to the controls defined in the 'controls' array.
-- In the JS, use: window.addEventListener('message', (event) => { if(event.data.id === '...'){ ... } });
-`;
-
-const REFINE_SYSTEM_INSTRUCTION = `
-You are a Senior Code Refactorer.
-Update the existing HTML5 Canvas (2D) simulation code based on the User Request.
-Return the FULL updated code and controls list in valid JSON format matching the schema.
-
-### CRITICAL RULES
-1. Do not introduce syntax errors.
-2. NEVER declare 'const' without initialization.
-3. Keep it 2D Canvas. Do not switch to 3D.
+   - Listen for 'message' events to update parameters.
+   - NEVER declare 'const' without initialization. Use 'let'.
 `;
 
 const CHAT_SYSTEM_INSTRUCTION = `
@@ -90,40 +64,48 @@ Keep responses concise.
 // UTILITIES
 // ------------------------------------------------------------------
 
-const cleanAndParseJSON = (text: string): GeneratedSimulation => {
-  let jsonString = text;
-  
-  // Cleanup markdown wrappers if present
-  if (jsonString.includes('```json')) {
-      jsonString = jsonString.replace(/```json/g, '').replace(/```/g, '').trim();
-  } else if (jsonString.includes('```')) {
-      jsonString = jsonString.replace(/```/g, '').trim();
-  }
-
-  // Heuristic to find JSON object (Robust finding of first '{' and last '}')
-  const firstBrace = jsonString.indexOf('{');
-  const lastBrace = jsonString.lastIndexOf('}');
-  
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    jsonString = jsonString.substring(firstBrace, lastBrace + 1);
-  } else {
-    // If braces are missing, the output is likely not JSON
-    throw new Error("Invalid output format: Could not find JSON object.");
-  }
-  
-  let data;
+const cleanAndParseSplitResponse = (text: string): GeneratedSimulation => {
   try {
-      data = JSON.parse(jsonString);
-  } catch (e) {
-      console.error("Failed to parse JSON. Raw text:", jsonString.substring(0, 200) + "...");
-      throw new Error("Received malformed data from AI. The physics engine stuttered. Please try again.");
-  }
-  
-  if (!data.code || !data.controls) {
-      throw new Error("Incomplete simulation data generated.");
-  }
+    const parts = text.split("|||SPLIT|||");
+    
+    if (parts.length < 2) {
+      // Fallback: Try to find JSON and HTML manually
+      const jsonMatch = text.match(/\{[\s\S]*?\}/);
+      const htmlMatch = text.match(/<!DOCTYPE html>[\s\S]*<\/html>/);
+      
+      if (jsonMatch && htmlMatch) {
+         return {
+            title: "Generated Simulation",
+            description: "AI Generated Scene",
+            instructions: "Interact with the simulation.",
+            code: htmlMatch[0],
+            controls: JSON.parse(jsonMatch[0]).controls || []
+         };
+      }
+      throw new Error("Response did not contain the split delimiter.");
+    }
 
-  return data as GeneratedSimulation;
+    // Part 1: JSON Metadata
+    let jsonStr = parts[0].trim();
+    jsonStr = jsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
+    const metadata = JSON.parse(jsonStr);
+
+    // Part 2: HTML Code
+    let codeStr = parts[1].trim();
+    codeStr = codeStr.replace(/```html/g, '').replace(/```/g, '').trim();
+
+    return {
+      title: metadata.title || "Untitled 2D Simulation",
+      description: metadata.description || "A physics simulation.",
+      instructions: metadata.instructions || "Use controls to interact.",
+      code: codeStr,
+      controls: metadata.controls || []
+    };
+
+  } catch (e) {
+    console.error("Split Parse Error (2D):", e);
+    throw new Error("Failed to parse the 2D simulation data.");
+  }
 };
 
 // ------------------------------------------------------------------
@@ -133,35 +115,26 @@ export const generateWithGoogle = async (prompt: string): Promise<GeneratedSimul
   console.log(`[Primary] Generating 2D Simulation via Google GenAI...`);
   const ai = new GoogleGenAI({ apiKey: GOOGLE_API_KEY });
   
-  const config: any = {
-      systemInstruction: SIMULATION_SYSTEM_INSTRUCTION,
-      maxOutputTokens: 8192,
-      responseMimeType: "application/json",
-      responseSchema: SIMULATION_SCHEMA
-  };
-
   try {
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: `Create a 2D Canvas physics simulation for: "${prompt}".`,
-        config: config
+        model: 'gemini-2.0-flash', // Upgraded to 2.0 Flash for speed/quality
+        contents: `Create a 2D Canvas physics simulation for: "${prompt}". Remember the |||SPLIT||| format.`,
+        config: {
+            systemInstruction: SIMULATION_SYSTEM_INSTRUCTION,
+            maxOutputTokens: 8192,
+        }
     });
 
     const text = response.text;
     if (!text) throw new Error("No response output from Google AI.");
 
-    return cleanAndParseJSON(text);
+    return cleanAndParseSplitResponse(text);
   } catch (error: any) {
     console.error("Google AI Error:", error);
     
-    // Friendly error messaging
     if (error.message?.includes('SAFETY')) {
-        throw new Error("The simulation request was flagged by safety filters. Please try a different prompt.");
+        throw new Error("The simulation request was flagged by safety filters.");
     }
-    if (error.message?.includes('429')) {
-        throw new Error("High traffic on the AI network. Please wait a moment and try again.");
-    }
-    
     throw error;
   }
 };
@@ -182,12 +155,10 @@ export const refineSimulationCode = async (currentSimulation: GeneratedSimulatio
   `;
 
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-2.0-flash',
     contents: context,
     config: {
-      systemInstruction: REFINE_SYSTEM_INSTRUCTION,
-      responseMimeType: "application/json",
-      responseSchema: SIMULATION_SCHEMA,
+      systemInstruction: SIMULATION_SYSTEM_INSTRUCTION, // Reuse split strategy
       maxOutputTokens: 8192
     }
   });
@@ -195,7 +166,7 @@ export const refineSimulationCode = async (currentSimulation: GeneratedSimulatio
   const text = response.text;
   if (!text) throw new Error("No response from AI Refiner.");
 
-  return cleanAndParseJSON(text);
+  return cleanAndParseSplitResponse(text);
 };
 
 // ------------------------------------------------------------------
@@ -208,28 +179,23 @@ export const generateChatResponse = async (history: ChatMessage[], newMessage: s
   const fullPrompt = `${context}\nUser: ${newMessage}\nAI:`;
 
   const response = await ai.models.generateContent({
-    model: 'gemini-2.5-flash',
+    model: 'gemini-2.0-flash',
     contents: fullPrompt,
     config: {
       systemInstruction: CHAT_SYSTEM_INSTRUCTION,
     }
   });
 
-  return response.text || "I'm having trouble connecting to my neural network right now. 🔌 Please try again! 🤖";
+  return response.text || "I'm having trouble connecting to my neural network right now.";
 };
 
 // ------------------------------------------------------------------
 // MAIN EXPORT
 // ------------------------------------------------------------------
 export const generateSimulationCode = async (prompt: string, is3D: boolean = false, modelId?: AIModelId): Promise<GeneratedSimulation> => {
-  // If 3D is requested, this function shouldn't be called, but as a fallback/guard:
   if (is3D) {
       throw new Error("Use generateWithOpenRouter for 3D requests.");
   }
-  
-  // Note: Currently 2D generation exclusively uses Google Gemini Flash regardless of model selection
-  // as it provides the most consistent JSON output for 2D Canvas code.
-  // In the future, we can map modelId to other 2D providers if needed.
   
   try {
     return await generateWithGoogle(prompt);

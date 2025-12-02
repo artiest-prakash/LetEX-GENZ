@@ -1,4 +1,3 @@
-
 import { GeneratedSimulation, AIModelId } from "../types";
 
 // ------------------------------------------------------------------
@@ -21,32 +20,32 @@ The user may ask for complex objects (Animals, Vehicles, Structures).
 - *Example*: A "Human" is a Group of cylinders (limbs) and spheres (joints/head).
 - *Example*: A "Car" is a Box (body) and Cylinders (wheels).
 
-### 2. TEXTURE LIBRARY & MAPPING (STRICT)
-You MUST use these specific URLs for textures.
-- **Sun**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/lava/lavatile.jpg (Bright glowing texture)
+### 2. MATERIALS & LIGHTING (NO BLACK MODELS)
+- **ALWAYS** set a base \`color\` (e.g., 0xffffff) for materials, even if using a texture map.
+- **NEVER** leave a material black unless requested.
+- Use \`MeshStandardMaterial\` for best lighting reaction.
+
+### 3. TEXTURE LIBRARY (MAPPING)
+- **Sun**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/lava/lavatile.jpg
 - **Earth**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg
 - **Moon**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg
 - **Mars**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/mars_1k.jpg
 - **Wood**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/hardwood2_diffuse.jpg
 - **Metal**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg (Use grey color + high metalness)
-- **Water**: https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/water/Water_1_M_Normal.jpg
 
 **CRITICAL MAPPING RULES:**
-1. If the object is the **SUN**, you MUST use the **Sun** texture (lavatile). **NEVER** use the Earth texture for the Sun.
-2. If the object is **EARTH**, use the **Earth** texture.
-3. For generic planets, use Moon or Mars textures with different colors.
+1. If the object is the **SUN**, use the Sun texture.
+2. If the object is **EARTH**, use the Earth texture.
 
-### 3. MANDATORY OUTPUT FORMAT (SPLIT-BLOCK)
-To ensure the code is valid, you MUST output the response in TWO parts separated by the delimiter "|||SPLIT|||".
+### 4. MANDATORY OUTPUT FORMAT (SPLIT-BLOCK)
+Output TWO parts separated by "|||SPLIT|||".
 
 **PART 1: METADATA (JSON)**
 {
   "title": "Title",
   "description": "Short description",
   "instructions": "Controls info",
-  "controls": [ 
-    {"id": "speed", "type": "slider", "label": "Speed", "defaultValue": 1, "min": 0, "max": 5, "step": 0.1} 
-  ]
+  "controls": [ ... ]
 }
 
 |||SPLIT|||
@@ -58,7 +57,7 @@ To ensure the code is valid, you MUST output the response in TWO parts separated
 </html>
 
 ---
-### 4. HTML SKELETON (Use this for Part 2)
+### 5. HTML SKELETON (Use this for Part 2)
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -100,31 +99,42 @@ To ensure the code is valid, you MUST output the response in TWO parts separated
             // 1. SETUP
             scene = new THREE.Scene();
             scene.background = new THREE.Color(0xf8fafc);
-            scene.fog = new THREE.Fog(0xf8fafc, 10, 80);
+            scene.fog = new THREE.Fog(0xf8fafc, 20, 100); // Slight fog for depth
             
             camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.position.set(5, 5, 10);
             
-            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            // OPTIMIZED RENDERER
+            renderer = new THREE.WebGLRenderer({ antialias: window.devicePixelRatio < 2, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Cap pixel ratio for performance
             renderer.shadowMap.enabled = true;
             renderer.shadowMap.type = THREE.PCFSoftShadowMap;
             document.body.appendChild(renderer.domElement);
             
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
-            controls.maxPolarAngle = Math.PI / 2 - 0.05; // Floor limit
+            controls.maxPolarAngle = Math.PI / 2 - 0.05;
 
-            // 2. LIGHTING (Studio)
-            const ambient = new THREE.AmbientLight(0xffffff, 0.6);
+            // 2. LIGHTING (Enhanced for Visibility)
+            const ambient = new THREE.AmbientLight(0xffffff, 0.4);
             scene.add(ambient);
+
+            const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.6); // Sky/Ground
+            hemiLight.position.set(0, 20, 0);
+            scene.add(hemiLight);
             
-            const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
             dirLight.position.set(10, 20, 10);
             dirLight.castShadow = true;
-            dirLight.shadow.mapSize.width = 2048;
-            dirLight.shadow.mapSize.height = 2048;
+            dirLight.shadow.mapSize.width = 1024; // Optimized shadow map
+            dirLight.shadow.mapSize.height = 1024;
             scene.add(dirLight);
+            
+            // Camera Light (Fill light that follows user)
+            const camLight = new THREE.PointLight(0xffffff, 0.5);
+            camera.add(camLight);
+            scene.add(camera);
 
             // 3. FLOOR
             const grid = new THREE.GridHelper(200, 100, 0xcbd5e1, 0xe2e8f0);
@@ -138,11 +148,12 @@ To ensure the code is valid, you MUST output the response in TWO parts separated
             plane.receiveShadow = true;
             scene.add(plane);
 
-            // 4. POST PROCESSING (Bloom)
+            // 4. POST PROCESSING (Optimized Bloom)
             const renderScene = new RenderPass(scene, camera);
-            const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+            // Half-resolution bloom for mobile performance
+            const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth/2, window.innerHeight/2), 1.5, 0.4, 0.85);
             bloomPass.threshold = 0.85;
-            bloomPass.strength = 0.3; // Subtle bloom
+            bloomPass.strength = 0.3;
             bloomPass.radius = 0;
             
             composer = new EffectComposer(renderer);
@@ -211,13 +222,11 @@ const cleanAndParseSplitResponse = (text: string): GeneratedSimulation => {
 
     // Part 1: JSON Metadata
     let jsonStr = parts[0].trim();
-    // Cleanup potential markdown wrapping around JSON
     jsonStr = jsonStr.replace(/```json/g, '').replace(/```/g, '').trim();
     const metadata = JSON.parse(jsonStr);
 
     // Part 2: HTML Code
     let codeStr = parts[1].trim();
-    // Cleanup potential markdown wrapping around HTML
     codeStr = codeStr.replace(/```html/g, '').replace(/```/g, '').trim();
 
     // Auto-fix common "const" syntax errors in JS
@@ -241,7 +250,6 @@ const cleanAndParseSplitResponse = (text: string): GeneratedSimulation => {
 };
 
 const getModelString = (modelId: AIModelId) => {
-    // Mapping user-facing IDs to actual OpenRouter model strings
     switch(modelId) {
         case 'grok-2': return 'x-ai/grok-2-1212';
         case 'claude-opus-4.5': return 'anthropic/claude-3.5-sonnet'; 
@@ -260,14 +268,12 @@ export const generateWithOpenRouter = async (prompt: string, modelId: AIModelId 
   const modelString = getModelString(modelId);
   console.log(`[OpenRouter] Generating with ${modelString} (ID: ${modelId})...`);
   
-  // Header handling for browser environment
   const headers: Record<string, string> = {
     "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
     "Content-Type": "application/json",
     "X-Title": "LetEX Virtual Lab"
   };
 
-  // Only add Referer if in browser
   if (typeof window !== 'undefined') {
     headers["HTTP-Referer"] = window.location.origin;
   }
@@ -301,13 +307,10 @@ export const generateWithOpenRouter = async (prompt: string, modelId: AIModelId 
 
   } catch (error) {
     console.error("Primary Model Failed:", error);
-    
-    // FALLBACK LOGIC
     if (modelId !== 'gemini-flash') {
         console.warn("Attempting fallback to Gemini 2.0 Flash...");
         return generateWithOpenRouter(prompt, 'gemini-flash');
     }
-    
     throw new Error("Simulation generation failed. Please check your connection or try a simpler prompt.");
   }
 };
