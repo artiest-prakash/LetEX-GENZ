@@ -42,21 +42,11 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return;
+    if (!user) { onRequireLogin(); return; }
 
-    if (!user) {
-        onRequireLogin();
+    if (userProfile && (userProfile.credits < COST_3D || userProfile.is_banned)) {
+        alert(userProfile.is_banned ? "Account restricted." : `Insufficient credits (${COST_3D} required).`);
         return;
-    }
-
-    if (userProfile) {
-        if (userProfile.credits < COST_3D) {
-            alert(`Insufficient credits! 3D simulations require ${COST_3D} credits.`);
-            return;
-        }
-        if (userProfile.is_banned) {
-            alert("Your account has been restricted.");
-            return;
-        }
     }
 
     setStatus(GenerationStatus.GENERATING);
@@ -65,22 +55,14 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({
     setPendingSimulation(null);
 
     try {
-      // Use OpenRouter (Claude/GPT) Service with Selected Model
       const data = await generateWithOpenRouter(prompt, selectedModel);
       setPendingSimulation(data);
       
       if (user && userProfile) {
          const newCredits = Math.max(0, userProfile.credits - COST_3D);
          onUpdateCredits(newCredits); 
-         
-         const { error } = await supabase
-            .from('profiles')
-            .update({ credits: newCredits })
-            .eq('id', user.id);
-            
-         if (error) console.error("3D Credit deduction failed:", error);
+         await supabase.from('profiles').update({ credits: newCredits }).eq('id', user.id);
       }
-
     } catch (err) {
       console.error("3D Generation Error:", err);
       setError(err instanceof Error ? err.message : "An unknown error occurred");
@@ -103,8 +85,7 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({
   };
 
   return (
-    // Orange-Red Light Theme Background
-    <div className="w-full min-h-screen bg-gradient-to-br from-orange-50 via-white to-rose-50 text-slate-900 -mt-4 md:-mt-10 px-4 py-6 md:py-10 md:px-8">
+    <div className="w-full min-h-screen bg-gradient-to-br from-orange-50 via-white to-rose-50 text-slate-900 -mt-4 md:-mt-10 px-4 py-6 md:py-10 md:px-8 relative z-10">
       
       {status === GenerationStatus.IDLE && (
         <div className="max-w-4xl mx-auto text-center mt-6 md:mt-10 animate-in fade-in slide-in-from-bottom-8">
@@ -117,57 +98,46 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({
                Build in <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-red-600">Three Dimensions</span>
             </h1>
             <p className="text-base md:text-lg text-slate-600 max-w-2xl mx-auto mb-10 md:mb-12">
-               Generate immersive WebGL experiences instantly. Visualize molecules, space, or complex structures using geometric composition.
+               Generate immersive WebGL experiences instantly. Visualize molecules, space, or complex structures.
             </p>
 
-            {/* Input Bar - Enhanced Appearance (Matches 2D Styling) */}
-            {/* REMOVED overflow-hidden TO FIX DROPDOWN CLIPPING */}
-            <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 flex flex-col gap-4 max-w-2xl mx-auto relative group">
-               <div className="relative">
-                  <textarea
-                     value={prompt}
-                     onChange={(e) => setPrompt(e.target.value)}
-                     placeholder="Describe a 3D scene (e.g. 'A futuristic robot arm picking up a cube')"
-                     className="w-full bg-transparent rounded-2xl px-6 py-6 pb-20 text-slate-800 placeholder-slate-400 focus:outline-none transition-all resize-none h-40 md:h-44 text-base md:text-lg font-medium leading-relaxed group-focus-within:ring-0"
-                     onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !e.shiftKey) {
-                           e.preventDefault();
-                           handleGenerate();
-                        }
-                     }}
-                  />
-                  
-                  {/* Focus Glow (Orange Tint) */}
-                  <div className="absolute inset-0 rounded-3xl pointer-events-none transition-all duration-300 border-2 border-transparent group-focus-within:border-orange-100 group-focus-within:shadow-[0_0_20px_rgba(249,115,22,0.15)]"></div>
+            {/* INPUT BAR - FIXED: Removed overflow-hidden to let dropdown appear */}
+            <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100 flex flex-col relative group w-full max-w-3xl mx-auto z-30">
+                <textarea
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder="Describe a 3D scene (e.g. 'A futuristic robot arm picking up a cube')"
+                    className="w-full bg-transparent px-6 py-6 pb-24 text-slate-800 placeholder-slate-400 focus:outline-none resize-none h-48 md:h-52 text-base md:text-lg font-medium leading-relaxed rounded-3xl"
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleGenerate(); } }}
+                />
+                
+                {/* Focus Glow Visualization */}
+                <div className="absolute inset-0 rounded-3xl pointer-events-none transition-all duration-300 border-2 border-transparent group-focus-within:border-orange-100 group-focus-within:shadow-[0_0_20px_rgba(249,115,22,0.15)]"></div>
 
-                  {/* Input Bottom Bar (Model Selector Left, Generate Right) */}
-                  <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
-                      {/* Model Selector (Bottom Left) */}
-                      <ModelSelector 
-                          selectedModel={selectedModel}
-                          onSelect={setSelectedModel}
-                      />
+                {/* Bottom Bar - Rounded Bottom */}
+                <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white/95 to-transparent flex items-end justify-between rounded-b-3xl">
+                    <div className="relative z-50">
+                        <ModelSelector selectedModel={selectedModel} onSelect={setSelectedModel} />
+                    </div>
 
-                      {/* Render Button (Bottom Right) */}
-                      <button
+                    <button
                         onClick={handleGenerate}
                         disabled={!prompt.trim()}
                         className={`
-                           flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold text-sm transition-all duration-300
-                           ${!prompt.trim() 
-                              ? 'bg-slate-100 text-slate-300 cursor-not-allowed' 
-                              : 'bg-gradient-to-r from-orange-500 to-red-600 text-white hover:shadow-lg hover:shadow-orange-500/30 hover:scale-[1.02] active:scale-95'}
+                            flex items-center gap-2 px-6 py-2.5 rounded-lg font-bold text-sm transition-all duration-300 relative z-40
+                            ${!prompt.trim() 
+                                ? 'bg-slate-100 text-slate-300 cursor-not-allowed' 
+                                : 'bg-gradient-to-r from-orange-500 to-red-600 text-white hover:shadow-lg hover:shadow-orange-500/30 hover:scale-[1.02]'}
                         `}
-                     >
+                    >
                         <span>Render 3D</span>
                         <Icons.Box className="w-4 h-4" />
-                     </button>
-                  </div>
-               </div>
+                    </button>
+                </div>
             </div>
 
-            {/* Horizontal Suggestion Slider */}
-            <div className="mt-10 w-full overflow-x-auto pb-4 no-scrollbar">
+            {/* SUGGESTION SLIDER */}
+            <div className="mt-8 w-full max-w-3xl mx-auto overflow-x-auto pb-4 no-scrollbar relative z-20">
                <div className="flex gap-3 px-4 min-w-max mx-auto snap-x">
                   {SUGGESTIONS_3D.map((s, i) => (
                     <button
@@ -184,17 +154,13 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({
       )}
 
       {status === GenerationStatus.GENERATING && (
-         <div className="text-slate-900">
-            <LoadingState 
-                simulationTitle={pendingSimulation?.title} 
-                onComplete={onLoadingComplete}
-                userName={user?.user_metadata?.full_name || "Creator"}
-            />
+         <div className="text-slate-900 relative z-10">
+            <LoadingState simulationTitle={pendingSimulation?.title} onComplete={onLoadingComplete} userName={user?.user_metadata?.full_name || "Creator"} />
          </div>
       )}
 
       {status === GenerationStatus.COMPLETED && simulation && (
-         <div className="max-w-6xl mx-auto">
+         <div className="max-w-6xl mx-auto relative z-10">
              <ThreeDSimulationViewer 
                 simulation={simulation}
                 onClose={handleClose}
@@ -206,21 +172,13 @@ export const ThreeDDashboard: React.FC<ThreeDDashboardProps> = ({
       )}
 
       {status === GenerationStatus.ERROR && (
-          <div className="max-w-xl mx-auto mt-20 p-8 bg-white border border-red-100 rounded-3xl shadow-xl text-center animate-in fade-in zoom-in">
-             <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4 border border-red-100">
-                <Icons.X className="w-8 h-8" />
-             </div>
+          <div className="max-w-xl mx-auto mt-20 p-8 bg-white border border-red-100 rounded-3xl shadow-xl text-center animate-in fade-in zoom-in relative z-10">
+             <Icons.X className="w-10 h-10 text-red-500 mx-auto mb-4" />
              <h3 className="text-xl font-bold text-red-600 mb-2">3D Render Failed</h3>
              <p className="text-slate-500 mb-6 text-sm">{error}</p>
-             <button 
-                onClick={handleClose} 
-                className="px-6 py-2.5 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-500/30"
-             >
-                Dismiss
-             </button>
+             <button onClick={handleClose} className="px-6 py-2.5 bg-red-600 text-white font-semibold rounded-xl hover:bg-red-700 transition-colors shadow-lg shadow-red-500/30">Dismiss</button>
           </div>
       )}
-
     </div>
   );
 };
